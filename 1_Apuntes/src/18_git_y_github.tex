@@ -1,0 +1,79 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{18}{Git y GitHub: puntos de guardado y respaldo en la nube}
+
+\section{Qué es Git}
+
+\begin{concepto}{Git = máquina de puntos de guardado}
+Como en un videojuego: cada vez que llegas a un estado que vale la pena conservar, haces un
+\textbf{commit} (``guardar partida''): Git fotografía TODOS los archivos del proyecto en ese
+instante y guarda la foto para siempre, con fecha, autor y un mensaje. Si mañana rompes algo,
+puedes volver a cualquier foto anterior. El historial vive en la carpeta oculta \codigo{.git}.
+Lo usa todo programador del planeta, a diario.
+\end{concepto}
+
+Vocabulario mínimo:
+\begin{itemize}
+  \item \textbf{repo(sitorio)}: el proyecto vigilado por Git.
+  \item \codigo{git add .}: poner archivos ``en la bandeja'' para la próxima foto.
+  \item \codigo{git commit -m "mensaje"}: disparar la foto.
+  \item \codigo{git status}: ver qué hay en la bandeja / qué cambió.
+  \item \textbf{rama (branch)}: una línea de historia. La principal se llama \codigo{main}.
+  \item \textbf{remote / origin}: el apodo de la copia en la nube.
+  \item \codigo{git push}: empujar tus fotos locales a la nube.
+\end{itemize}
+
+\begin{concepto}{.gitignore = lo que JAMÁS entra en las fotos}
+Un archivo de texto con la lista de lo prohibido: secretos (\codigo{.openalex\_key}), la
+burbuja (\codigo{.venv/}), datos regenerables (\codigo{2\_Datos/}), herramientas descargadas
+(\codigo{tools/}). Así el repo lleva el \emph{código y el conocimiento}, no los pesos muertos
+ni las llaves. Verificamos con \codigo{git ls-files} que ningún secreto entró: cero.
+\end{concepto}
+
+\section{Qué es GitHub (y qué NO es)}
+
+\textbf{GitHub} es la nube donde respaldas los repos de Git — y además tu \textbf{portafolio
+público}: cualquiera puede ver tu código, clonarlo (\codigo{git clone}) y correrlo en su PC.
+GitHub \emph{guarda} el código; no lo \emph{ejecuta} por el visitante.
+
+Tu repo: \codigo{github.com/kmortizva-data/froth} — de momento \textbf{privado} (GitHub
+muestra 404 a los extraños para no revelar ni que existe). Cuando esté pulido:
+Settings $\rightarrow$ Change visibility $\rightarrow$ Public, y nace el portafolio.
+
+\section{Lo que pasó en tu primera vez (incluye los tropiezos, que enseñan)}
+
+\begin{enumerate}
+  \item \codigo{git init} + \codigo{git add .} + \codigo{git commit} $\rightarrow$ primera
+        foto: 65 archivos, cero secretos.
+  \item \textbf{Tropiezo 1}: el push falló con ``repository does not seem to exist'' — el
+        remoto apuntaba a una URL de ejemplo cuya página nunca se creó en GitHub. Lección:
+        \emph{el repo en la nube hay que crearlo antes de empujar} (o dejar que GitHub
+        Desktop lo cree con su botón \textbf{Publish repository}, que hace ambas cosas).
+  \item \textbf{Tropiezo 2}: \codigo{git remote remove origin} respondió ``No such remote''
+        — significaba ``ya estaba borrado'', no un error real. Lección: lee el mensaje;
+        a veces el ``error'' es solo un aviso de que no había nada que hacer.
+  \item \codigo{git branch -M main}: renombrar \codigo{master} $\rightarrow$ \codigo{main}
+        (el estándar moderno). El silencio de la terminal $=$ éxito.
+  \item \textbf{Publish repository} en GitHub Desktop $\rightarrow$ creó el repo en la nube y
+        empujó. Verificado: \codigo{main...origin/main} sin diferencias $=$ sincronizado.
+\end{enumerate}
+
+\section{Tu rutina desde ahora (la única que necesitas memorizar)}
+
+Al final de cada sesión de trabajo con cambios que valgan:
+\begin{center}
+\codigo{git add .} \quad$\rightarrow$\quad \codigo{git status} (revisar) \quad$\rightarrow$\quad
+\codigo{git commit -m "qué hice"} \quad$\rightarrow$\quad \codigo{git push}
+\end{center}
+(O en GitHub Desktop: revisar cambios $\rightarrow$ escribir resumen $\rightarrow$ Commit
+$\rightarrow$ Push. Es lo mismo con botones.)
+
+\begin{resumen}
+Git guarda fotos completas del proyecto (commits) y GitHub las respalda en la nube y las
+exhibe como portafolio; el .gitignore protege secretos y pesos muertos. Tu rutina: add
+$\rightarrow$ status $\rightarrow$ commit $\rightarrow$ push. Primera foto: 65 archivos,
+cero secretos, ya en la nube.
+\end{resumen}
+
+\end{document}

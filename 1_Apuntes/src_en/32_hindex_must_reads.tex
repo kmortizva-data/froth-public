@@ -1,0 +1,78 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{32}{h-index per cluster: how many papers are ``must-reads''}
+
+\section{The problem (your own no-magic-numbers rule)}
+
+In the reading guide we wanted to mark the must-reads of each subtopic. Top 3? No: ``top 3''
+is a magic number, just as arbitrary for a cluster of 110 geology papers as for one of 9 on
+tomography. You asked to \emph{research how to research} it: a threshold computed \textbf{per
+corpus and per cluster}.
+
+\section{The idea stolen from bibliometrics: the h-index}
+
+The h-index was invented to measure researchers, but the definition works on ANY list of
+citation counts:
+
+\begin{concepto}{h-index of a cluster}
+The largest $h$ such that the cluster has $h$ papers with at least $h$ citations each. You sort
+by descending citations and look for the point where the rank overtakes the citations: right
+there the evidence stops holding itself up.
+\end{concepto}
+
+Why it is elegant: \textbf{the cluster sets its own yardstick}. A heavily cited cluster demands
+hundreds of citations to enter the must-read list; a young one settles for dozens. Zero
+parameters to tune.
+
+\section{The real Beauvoir data}
+
+\begin{itemize}
+  \item Geology/granites (110 papers) $\rightarrow$ $h = 35$: mature literature, the bar set
+        itself very high.
+  \item XCT tomography (9 papers) $\rightarrow$ $h = 3$: a young niche, a proportional bar.
+  \item USGS reports (mostly with 0 to 2 citations) $\rightarrow$ the h-index degenerates
+        ($h > n/2$, it would mark ``almost everything is a must-read''): that is where the
+        \textbf{head/tail breaks fallback} comes in. It cuts at the cluster's mean citation
+        count, which in long-tailed distributions separates the heavy head from the rest
+        ($\rightarrow$ 7).
+\end{itemize}
+
+\begin{ojo}
+Citations $\neq$ quality: they measure accumulated attention and they punish the recent (the 59
+papers from 2025 to 2027 with 0 citations are fresh research, not bad research). The must-read
+says ``this is the canon the field expects you to have read'', not ``this is the only thing
+worth anything''.
+\end{ojo}
+
+\section{Where this rule lives (and a lesson from 2026-08-03)}
+
+Until today this note described a fallback that had \textbf{never been implemented}: the
+h-index was in the code, the mean cut was not. It was implemented while building the
+Obsidian export, in \codigo{froth/export\_obsidian.py} (\codigo{\_must\_reads} and
+\codigo{\_mean\_cut}).
+
+\begin{ojo}
+\textbf{A small deviation broke the whole rule.} While programming it, Claude repeated the
+mean cut \emph{up to six times} instead of doing it ONCE, thinking that would be more
+selective. Measured effect on your thesis corpus: the 340-paper subtopic holds a classic
+with 4,250 citations that drags the mean, and repeating the cut strangled the list down to
+\textbf{1 paper}. With a single cut it gives 36. In total, the repeated version left 2
+papers or fewer in \textbf{20 of the 29 subtopics with 30+ papers}; this note's rule does
+that in none of them.
+
+The lesson: when a note fixes a method, the code has to follow it \emph{literally}. ``I made
+it a bit stricter'' is not an improvement, it is a different method, and it has to be
+measured before being called better.
+\end{ojo}
+
+Current figures with the correct rule: thesis corpus, 3,867 papers in 104 subtopics
+$\rightarrow$ 893 must-reads (median 6 per subtopic, none left short).
+
+\begin{resumen}
+Must-reads with no magic numbers: an h-index per cluster (self-calibrated to each subtopic's
+maturity) with a head/tail breaks fallback for when the citations are too flat for the h-index
+to discriminate.
+\end{resumen}
+
+\end{document}

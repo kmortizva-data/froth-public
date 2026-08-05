@@ -1,0 +1,97 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{00}{The project map (read this first)}
+
+\section{What we are building, and why}
+
+\textbf{Froth} is a tool that, given a scientific topic, downloads hundreds of papers,
+``understands'' them by their content and draws a \emph{map of subtopics}: bubbles of
+papers grouped by meaning, connections between groups, and empty areas (the \emph{gaps}
+where you can contribute something new in your thesis).
+
+The project has a double goal, and both weigh the same:
+\begin{enumerate}
+  \item \textbf{Actually learn Machine Learning}, piece by piece, by building it.
+  \item \textbf{Have a useful product} for complete literature reviews, not the classic
+        ``5 papers that confirm what I already thought''.
+\end{enumerate}
+
+\begin{concepto}{pipeline}
+The whole system is a \textbf{chain of 5 steps} where the output of one is the input of
+the next:
+\begin{center}
+\codigo{[1] PULL $\rightarrow$ [2] EMBED $\rightarrow$ [3] REDUCE $\rightarrow$ [4] CLUSTER $\rightarrow$ [5] VISUALIZE}
+\end{center}
+\begin{enumerate}
+  \item \textbf{Pull}: download papers (title, abstract, authors...) from public databases.
+  \item \textbf{Embed}: turn each abstract into a \emph{vector} (a list of numbers that captures its meaning).
+  \item \textbf{Reduce}: flatten those $\sim$768-dimensional vectors down to 2 so they can be drawn.
+  \item \textbf{Cluster}: group the nearby points $=$ subtopics discovered automatically.
+  \item \textbf{Visualize}: bubbles, mind map, gap detection, review draft.
+\end{enumerate}
+Each step is, at the same time, an ML concept you are going to master.
+\end{concepto}
+
+\section{The folder map (what each thing is, and in what order to look)}
+
+Everything lives inside \codigo{Documents\textbackslash Master Thesis AI\textbackslash}.
+\textbf{Golden rule:} the folders \emph{with a number} are yours (go in); the ones
+\emph{without a number} are the machinery (do not touch). The full cheat sheet is in the
+file \codigo{0\_LEEME\_PRIMERO.md} at the root.
+
+\textbf{Yours (numbered):}
+\begin{enumerate}
+  \item \codigo{1\_Apuntes/}: \textbf{your library} (these PDFs). Read them in order: 00, 01, 02...
+  \item \codigo{2\_Datos/}: the data. \codigo{raw/} (raw), \codigo{processed/} (clean tables),
+        \codigo{embeddings/} (vectors). It fills up on its own when you run the pipeline.
+  \item \codigo{3\_Resultados/}: the visible outputs, maps and reviews.
+  \item \codigo{4\_Notebooks/}: experimentation notebooks (Jupyter), when they arrive.
+  \item \codigo{5\_Bitacoras/}: decisions taken and your learning diary.
+\end{enumerate}
+
+\textbf{Machinery (no number, do not touch):}
+\begin{itemize}
+  \item \codigo{froth/}: \textbf{the source code} (the engine). One file per pipeline step:
+        \codigo{config.py} (settings) $\rightarrow$ \codigo{pull.py} $\rightarrow$
+        \codigo{embed.py} $\rightarrow$ \codigo{cluster.py} $\rightarrow$ \codigo{graph.py}
+        $\rightarrow$ \codigo{gaps.py} $\rightarrow$ \codigo{visualize.py}.
+  \item \codigo{.venv/}: the bubble holding Python and its libraries (see Note 01).
+  \item \codigo{tools/}: the compiler that turns these notes into PDFs.
+\end{itemize}
+
+\begin{ojo}
+Why does \codigo{froth/} \textbf{not} carry a number, if we said everything should be
+ordered? Because Python imports code by its name (\codigo{from froth import pull}) and a
+name starting with a number breaks the language. The \emph{order} of the pipeline does not
+live in the folder name but inside the code (\codigo{froth/\_\_init\_\_.py}). The notes
+and your own folders, on the other hand, are numbered because nobody imports them: they
+are only read.
+\end{ojo}
+
+\section{The 7 phases at a glance}
+
+\begin{enumerate}
+  \item[\textbf{F0}] \textbf{Foundations}: Python environment, Git, structure. \emph{(nearly closed)}
+  \item[\textbf{F1}] \textbf{Pull}: download 200 to 500 papers on a topic. \emph{(first version already works: 126 papers)}
+  \item[\textbf{F2}] \textbf{Embeddings}: text $\rightarrow$ vectors; semantic search. \emph{(next)}
+  \item[\textbf{F3}] \textbf{Clusters}: the subtopic bubbles (UMAP $+$ HDBSCAN $+$ BERTopic).
+  \item[\textbf{F4}] \textbf{Mind map}: a graph of relations between papers and topics.
+  \item[\textbf{F5}] \textbf{Gaps $+$ draft}: empty areas of the map and a structured review text.
+  \item[\textbf{F6}] \textbf{Deep learning}: PyTorch, transformers, fine-tuning your own model.
+\end{enumerate}
+
+\section{How to use these notes}
+
+Every time a new skill or concept shows up in the project, a numbered PDF note is generated
+and saved in \codigo{apuntes/}. You just go in there and read in order. Each note has
+coloured boxes: \textcolor{litblue}{\textbf{Concept}} (the idea),
+\textcolor{litgreen}{\textbf{Try it yourself}} (commands for you to type) and
+\textcolor{litorange}{\textbf{Watch out}} (typical mistakes).
+
+\begin{resumen}
+Froth is a 5-step pipeline that turns ``a topic'' into ``a map of the literature''; this
+note is your general blueprint: folders, phases and reading order.
+\end{resumen}
+
+\end{document}

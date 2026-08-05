@@ -1,0 +1,79 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{42}{When the program does not crash but HANGS: watchdogs and subprocesses}
+
+\section{The real accident (the early hours of 14 July)}
+
+We launched the uncapped re-harvest of the 22 topics. The batch ran perfectly: 18 giant corpora
+(4,000 to 16,681 papers each) in about 3 hours\ldots{} and then, silence. The next morning:
+\textbf{9 hours frozen} on topic \#20, no error, no message, no progress. The process was still
+``alive'' (77 MB of RAM, zero CPU), waiting for a network response that never came.
+
+\section{The central lesson: a hang is NOT a crash}
+
+Our \texttt{run\_topic} was already ``failure proof'': it wrapped the whole pipeline in
+\texttt{try/except}, and every failure became a \texttt{FAILED} row in the report so the next
+topic could carry on. It sounded armoured. It was not.
+
+\begin{concepto}{crash vs.\ hang}
+A \textbf{crash} raises an exception: \texttt{try/except} catches it and life goes on.
+A \textbf{hang} raises NOTHING: the program simply waits forever (a dead socket, a runaway
+computation, a blocked driver). No \texttt{try/except} in the world interrupts an infinite
+wait. For that you need someone WATCHING FROM OUTSIDE with a clock: a \textbf{watchdog}.
+\end{concepto}
+
+And since the topics ran in series, one single hang froze the entire batch. The probability was
+not negligible: 22 topics $\times$ 4 APIs $\times$ thousands of requests.
+
+\section{The fix: child process $+$ wall clock}
+
+Each topic now runs in its own \textbf{subprocess}
+(\texttt{python -m froth.batch --one "<title>"}) watched by the parent with
+\texttt{subprocess.run(..., timeout=TOPIC\_TIMEOUT\_S)} (2,400\,s, generous: the slowest
+legitimate topic took 38 min). If the child goes past the clock, Windows KILLS it, the parent
+writes \texttt{FAILED: timed out} and moves on to the next. The hang went from ``a silent
+9-hour catastrophe'' to ``an ugly row in the CSV''.
+
+Along the way we also bounded the two computations that really could run away: the DBCV sweep
+for automatic granularity is $\mathcal{O}(n^2)$ and repeats 18 times, which over 16,000 points
+is hours. Now, past a cap (\texttt{DBCV\_SUBSAMPLE\_CAP} $=$ 5,000) the sweep runs on a random
+subsample (the CHOICE of granularity is stable; the cost is not), and the final clustering does
+use every point. And the abstract backfill, the only network loop with no budget, got its time
+limit.
+
+\section{Bonus 1: the Beauvoir plan B}
+
+The topic ``Recovery of by-products of lithium from the a rare-metal granite'' harvested \textbf{0
+papers}: its derived terms revolved around ``a rare-metal granite'', too niche for the APIs. Fix: if
+the harvest comes back EMPTY, it retries ONCE with a broad high-recall query (the first content
+words of the title: \texttt{recovery by-products lithium}). Real result: from 178 old papers to
+\textbf{4,937}.
+
+\section{Bonus 2: the external enemy (WDAC in waves)}
+
+The corporate application control policy (WDAC) intermittently blocks the native DLLs of
+scipy/hdbscan/torch (``An Application Control policy has blocked this file''). Measured live: it
+let one child work for 19 minutes and 5 minutes later blocked the other two at import. You do
+not fight a corporate policy: you WAIT with automated patience. A cheap probe
+(\texttt{python -c "import hdbscan, umap, torch"}) every 5 minutes, and when the wave passes,
+the heavy work launches. The parent orchestrator, moreover, imports only \texttt{config} $+$
+\texttt{pandas}: with no scientific DLLs, WDAC cannot take it down.
+
+\begin{ojo}
+Three different layers of defence, because they are three different failures:
+\texttt{try/except} catches \emph{crashes}, the watchdog with a timeout kills \emph{hangs}, and
+the window probe waits out \emph{environment blocks}. Confusing them is like believing a life
+jacket protects you from lightning.
+\end{ojo}
+
+\begin{resumen}
+The batch froze for 9 hours because a hang raises no exception and nothing was watching. A
+three-layer fix: one subprocess per topic with a wall-clock timeout (watchdog), bounded
+computation (DBCV by subsample), and WDAC window probing. Result: 22 of 22 topics with a clear
+status and $\sim$169,000 papers harvested; Beauvoir went from 178 to 4,937 with the plan B
+terms, a synthetic-ore topic from 237 to 9,723. A robust system is not one that never fails: it is one that
+turns any failure into a row in the report and carries on.
+\end{resumen}
+
+\end{document}

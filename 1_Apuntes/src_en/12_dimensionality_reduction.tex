@@ -1,0 +1,101 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{12}{Dimensionality reduction: from 768 to 2 without losing the neighbourhood}
+
+\section{The problem}
+
+Each paper is a point in \textbf{768 dimensions} (Notes 05 to 07). Your screen has
+\textbf{2}. To draw the map you have to ``flatten'', but a bad flattening piles up points that
+have nothing to do with each other, and then the map lies. The question of this note:
+\emph{how do you flatten while preserving who is near whom?}
+
+\section{The classic intuition: PCA and shadows}
+
+\begin{concepto}{PCA (principal component analysis)}
+Think of the \textbf{shadow} of your hand on the wall: a 3D object projected into 2D. Orient
+the hand well and the shadow keeps the shape (you can see the fingers); orient it badly and
+everything overlaps. \textbf{PCA looks for the ``light angle'' that loses the least
+information}: the directions in which the data varies most. It is the classic technique, fast
+and widely used.
+\end{concepto}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+  \fill[litblue!60] (0.3,2.1) circle (3pt);
+  \fill[litblue!60] (0.8,2.5) circle (3pt);
+  \fill[litblue!60] (0.5,2.9) circle (3pt);
+  \fill[litorange!80] (2.6,0.6) circle (3pt);
+  \fill[litorange!80] (3.1,1.0) circle (3pt);
+  \fill[litorange!80] (2.9,0.3) circle (3pt);
+  \draw[->,gray,thick] (-0.5,0) -- (4,0) node[below left] {\small good projection};
+  \draw[litblue] (0.3,0.08) -- (0.9,0.08);
+  \draw[litorange] (2.5,0.08) -- (3.2,0.08);
+  \node[gray] at (1.7,-0.75) {\small the two groups stay apart};
+
+  \begin{scope}[xshift=7cm]
+    \fill[litblue!60] (0.5,2.3) circle (3pt);
+    \fill[litblue!60] (1.0,2.7) circle (3pt);
+    \fill[litblue!60] (0.7,3.1) circle (3pt);
+    \fill[litorange!80] (0.4,0.6) circle (3pt);
+    \fill[litorange!80] (0.9,1.0) circle (3pt);
+    \fill[litorange!80] (0.7,0.3) circle (3pt);
+    \draw[->,gray,thick] (-0.5,0) -- (4,0) node[below left] {\small bad projection};
+    \draw[litblue] (0.45,0.10) -- (1.05,0.10);
+    \draw[litorange] (0.35,0.06) -- (0.95,0.06);
+    \node[gray] at (1.7,-0.75) {\small the groups pile up!};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+The limitation: PCA only makes \emph{straight} (linear) projections. If the data forms curved
+or tangled clouds, as tends to happen with text, even the best angle piles things on top of
+each other.
+
+\section{The modern one: UMAP and moving neighbourhoods house by house}
+
+\begin{concepto}{UMAP}
+UMAP does not project shadows. It works in two stages:
+\begin{enumerate}
+  \item In 768D, it notes for each paper \textbf{who its nearest neighbours are}.
+  \item It places the points in 2D, bending and stretching whatever it needs to, with a single
+        obsession: \textbf{that every point keeps its neighbours beside it}.
+\end{enumerate}
+Like moving a city onto a smaller map while guaranteeing that each house stays next to the
+same houses as before, even if the long distances change. That is why UMAP separates clouds
+that PCA piles up: it is not restricted to straight projections.
+\end{concepto}
+
+\section{The small print: every 2D map lies a little}
+
+\begin{ojo}
+Flattening 768 dimensions into 2 \textbf{always} loses something. On a UMAP map:
+\begin{itemize}
+  \item \textbf{Trust}: who is stuck to whom; the clouds and groups that form.
+  \item \textbf{Do NOT trust}: the long distances (``this cluster is twice as far as that
+        one'') nor the apparent size of the clouds.
+  \item The X and Y axes \textbf{mean nothing} (they are not ``more flotation'' or ``more
+        lithium''); they are just the result of the arrangement. That is why UMAP maps are
+        published without numbers on the axes.
+\end{itemize}
+Knowing this puts you ahead of a lot of people who over-read these maps.
+\end{ojo}
+
+\section{How we will use it (what comes next)}
+
+\begin{enumerate}
+  \item Install \codigo{umap-learn} (if Python 3.14 allows it; there is a plan B with
+        scikit-learn's PCA/t-SNE, which changes the part, not the concept).
+  \item Run UMAP on the $126 \times 768$ matrix $\rightarrow$ a table of 126 points (x, y).
+  \item Draw the first scatter plot: your first glimpse of the map (Note 13).
+  \item Then group the clouds into subtopics with HDBSCAN (Note 14).
+\end{enumerate}
+
+\begin{resumen}
+PCA flattens by looking for the best ``shadow angle'' (fast but straight); UMAP rearranges
+while preserving neighbourhoods (ideal for text). On the resulting map: trust the neighbours
+and the clouds, distrust long distances, and the axes mean nothing.
+\end{resumen}
+
+\end{document}

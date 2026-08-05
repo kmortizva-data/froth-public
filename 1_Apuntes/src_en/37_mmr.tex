@@ -1,0 +1,74 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{37}{MMR: relevant but different (and an objective that came out degenerate)}
+
+\section{The problem that remained}
+
+The centroid (note 35) has a structural flaw: sentences resembling the centre resemble EACH
+OTHER. In your geology cluster, the 3 best sentences had a mutual similarity of \textbf{0.945},
+a summary saying the same thing three times.
+
+\begin{concepto}{Maximal Marginal Relevance (Carbonell \& Goldstein, 1998)}
+Greedy selection, one sentence at a time. Each candidate is scored as
+\[
+\lambda \cdot \mathrm{relevance} \;-\; (1-\lambda) \cdot \mathrm{redundancy}
+\]
+where redundancy $=$ its maximum similarity to what is ALREADY chosen. With $\lambda = 1$ you
+are back to the pure centroid; lowering $\lambda$ buys diversity by paying in relevance. The
+first one chosen is always the most relevant (nothing has been chosen yet to be redundant
+with).
+\end{concepto}
+
+\section{The stumble (which teaches more than the success)}
+
+First attempt at choosing $\lambda$ from the data: ``maximise relevance $-$ redundancy''.
+Result: it recommended $\lambda = 0.5$... the EDGE of the grid. That objective is
+\textbf{degenerate}: lowering $\lambda$ ALWAYS reduces redundancy faster than it loses
+relevance, so the ``optimum'' runs off downwards indefinitely. A recommender that always picks
+the extreme is measuring nothing.
+
+\section{The rule that does work}
+
+Looking at your real sweep (Beauvoir corpus, 12 clusters):
+
+\begin{center}
+\begin{tabular}{cccc}
+$\lambda$ & relevance & redundancy \\
+\hline
+0.5 & 0.868 & 0.758 \\
+0.6 & 0.906 & 0.829 \\
+\textbf{0.7} & \textbf{0.918} & \textbf{0.860} \\
+0.8 & 0.921 & 0.873 \\
+1.0 & 0.923 & 0.884 \\
+\end{tabular}
+\end{center}
+
+From 1.0 down to 0.7 relevance barely falls ($-0.5\%$) and the diversity comes for free; from
+0.7 downwards you start really paying. Rule adopted (interpretable): \textbf{the most diverse
+$\lambda$ that keeps $\geq 99\%$ of the achievable relevance}. Your corpus voted $\lambda = 0.7$
+on its own, and it coincides with the literature's default, but now we KNOW why it holds for
+this data (project rule 9).
+
+\begin{practica}
+\texttt{.venv\textbackslash Scripts\textbackslash python.exe -m froth.review}: at the end it
+prints the sweep and the before/after of the most redundant cluster. The centroid gives 3
+cloned pegmatite sentences; MMR keeps the definition and adds Nb-Ta granites and the
+Erzgebirge. Three angles, not an echo.
+\end{practica}
+
+\begin{ojo}
+MMR is greedy: it picks the best NOW without looking ahead, because the exact optimum is
+combinatorial (trying every combination of sentences). For 3 to 5 sentence summaries, the
+greedy approximation is the standard and it is more than enough.
+\end{ojo}
+
+\begin{resumen}
+MMR $=$ $\lambda \cdot$relevance $-$ $(1-\lambda) \cdot$redundancy, greedy selection. The first
+objective for choosing $\lambda$ came out degenerate (it stuck to the edge); the final rule,
+maximum diversity keeping 99\% of the relevance, chose 0.7 with your data. That completes the 3
+ranking pieces: typical (centroid), endorsed (TextRank) and diverse (MMR). Next comes
+assembling draft v2 (7.4).
+\end{resumen}
+
+\end{document}

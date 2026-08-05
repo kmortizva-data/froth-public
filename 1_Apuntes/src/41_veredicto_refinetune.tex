@@ -1,0 +1,65 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{41}{El veredicto del re-fine-tune: más datos NO mejoró}
+
+\section{La hipótesis (tu duda del learning log)}
+
+El fine-tune v1 (specter-mineral, 1.290 papers) ganaba 14/22 en DBCV pero castigaba la
+periferia (hasta $-0.43$). Hipótesis natural: con \textbf{3$\times$ más datos}
+(re-cosecha con keys $\to$ 4.045 papers) el modelo v2 debería generalizar mejor y dejar
+de penalizar los topics lejanos. Lo pusimos a prueba, medido.
+
+\section{El experimento limpio}
+
+Entrenamos v2 (4.045 pares título$\leftrightarrow$abstract, MNRL, 249s en tu RTX 5060) y
+comparamos \textbf{los tres modelos sobre los MISMOS 22 corpus nuevos} por DBCV: base
+(SPECTER genérico), v1 (fine-tune viejo) y v2 (fine-tune grande).
+
+\begin{center}
+\begin{tabular}{lccc}
+ & gana a base & delta medio \\
+\hline
+v1 (1.290 papers) & \textbf{16/22} & \textbf{+0.093} \\
+v2 (4.045 papers) & 14/22 & +0.069 \\
+v2 vs v1 directo & 10/22 & \textbf{$-$0.024} \\
+\end{tabular}
+\end{center}
+
+\begin{concepto}{el resultado: escalar datos NO ayudó (y hasta empeoró un poco)}
+v2 gana a base MENOS veces que v1 (14 vs 16) y con menor margen. Cabeza a cabeza,
+v2 le gana a v1 en solo 10/22 con delta medio negativo. \textbf{El fine-tune pequeño y
+curado fue igual o mejor que el grande.}
+\end{concepto}
+
+\section{Por qué (la lección de verdad)}
+
+La re-cosecha 3$\times$ trajo más papers, pero también más DIVERSOS y RUIDOSOS
+(colisiones de términos multi-dominio como ``attrition''/``autogenous'', más subdominios).
+El fine-tuning auto-supervisado arrastra el modelo hacia el \emph{centro de masa} del
+corpus de entrenamiento (apunte 31); al agrandar el corpus con ruido, ese centro se
+mueve hacia lo genérico y la especialización se DILUYE.
+
+\begin{ojo}
+En fine-tuning auto-supervisado, la CALIDAD y coherencia del corpus importa más que la
+cantidad. ``Más datos'' es un reflejo, no una ley. La varianza sigue altísima: v2 va de
+$+0.47$ (escorias XCT) a $-0.51$ (finos de silicato de hierro) --- el fine-tune es una
+apuesta por-topic, no una mejora uniforme.
+\end{ojo}
+
+\section{Qué queda en producción}
+
+Nada cambia: producción sigue con el SPECTER \textbf{base} (el más estable across topics).
+Los fine-tunes son el RESULTADO DE INVESTIGACIÓN. v1 se conserva
+(\texttt{models/specter-mineral-v1}); v2 queda como referencia. Evidencia completa en
+\texttt{2\_Datos/model\_comparison\_3way.csv}.
+
+\begin{resumen}
+Re-fine-tune con 3$\times$ datos: v2 gana a base 14/22 (v1 ganaba 16/22), y pierde contra
+v1 cabeza a cabeza (delta medio $-0.024$). Más datos NO mejoró --- el corpus grande y
+ruidoso diluyó la especialización. Lección de tesis honesta: en fine-tuning
+auto-supervisado, la curación del corpus $>$ el tamaño. ``No mejora'' también es
+resultado.
+\end{resumen}
+
+\end{document}

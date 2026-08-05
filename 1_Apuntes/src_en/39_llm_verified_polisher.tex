@@ -1,0 +1,58 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{39}{The LLM as a verified polisher (never as an author)}
+
+\section{The hierarchy of trust}
+
+Draft v2 is extractive: guaranteed truth, so-so prose. An LLM writes excellent prose... with no
+guarantee of truth. The architecture of phase 7.6 takes the best of both WITHOUT inheriting the
+risk:
+
+\begin{concepto}{polishing $\neq$ generating}
+The local LLM (Ollama) receives ONE narrow instruction: rewrite a section's paragraph so it
+flows, without adding or removing statements, keeping every $[n]$ citation exactly once. It
+does not research, it does not opine, it does not cite: it POLISHES sentences that already
+exist. The knowledge comes from the corpus; the LLM only contributes grammar.
+\end{concepto}
+
+\section{The verification gate (the heart of the design)}
+
+Trusting is not enough: every rewritten section goes through \texttt{\_verified()} in
+\texttt{froth/polish.py}:
+
+\begin{itemize}
+  \item \textbf{Citation census}: the $[n]$ citations in the polished text must be EXACTLY
+        those of the original (one fewer $=$ it deleted evidence; one more $=$ it invented).
+  \item \textbf{Length band} (0.5 to 1.7$\times$): outside that, it either over-summarised
+        (losing statements) or rambled (probably adding).
+  \item If ANY check fails $\rightarrow$ the section keeps its extractive original, silently.
+        The draft can only improve, never lie.
+\end{itemize}
+
+Tested without a server: the gate rejected a deleted citation, an invented citation and shrunk
+text; and with no Ollama running the draft stays intact (soft failure, like the source
+connectors).
+
+\section{Why LOCAL (Ollama) and not an API}
+
+A decision of yours from Phase 6 that pays off here: free (no quotas), private (your review
+never leaves your PC), offline, and a differentiator, since Elicit/SciSpace/Consensus depend on
+OpenAI. Your RTX 5060 runs an 8B model comfortably. Setup in
+\texttt{docs/OLLAMA\_SETUP.md} (one installer plus \texttt{ollama pull llama3.1:8b},
+$\sim$5 GB, once only).
+
+\begin{ojo}
+Temperature 0.2 (almost deterministic): for polishing you do not want creativity, you want
+obedience. And the polished version is a SEPARATE DOWNLOAD, the extractive one stays the
+visible default. The chain of trust: measured map $\rightarrow$ real sentences $\rightarrow$
+verified polished prose. Every link auditable.
+\end{ojo}
+
+\begin{resumen}
+The local LLM rewrites paragraphs that are already built and an automatic gate (citation census
+$+$ length band) discards any suspicious rewrite, section by section. LLM prose with the
+traceability of the extractive one, or nothing.
+\end{resumen}
+
+\end{document}

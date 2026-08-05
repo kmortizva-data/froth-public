@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{30}{El nacimiento de specter-mineral: tu primer entrenamiento real}
+
+\section{Qué pasó (en 83 segundos)}
+
+Tu RTX 5060 tomó el SPECTER genérico y lo \textbf{afinó} con los $\sim$1,250 pares
+título$\leftrightarrow$abstract del corpus maestro: 2 épocas, 160 pasos, lotes de 16.
+El resultado vive en \codigo{models/specter-mineral} — un modelo de embeddings que habla
+el dialecto del procesamiento mineral. En CPU habrían sido horas; en tu GPU, 83 segundos.
+
+\section{Los conceptos que acabas de usar}
+
+\begin{concepto}{fine-tuning (afinar) $\neq$ entrenar desde cero}
+No construimos un modelo nuevo: tomamos los pesos de SPECTER (que ya sabe ``leer papers'')
+y los \textbf{empujamos suavemente} hacia tu dominio. Como un geólogo generalista haciendo
+una especialización — no vuelve a la primaria.
+\end{concepto}
+
+\begin{concepto}{la jugada elegante: auto-supervisión con MNRL}
+Entrenar suele exigir etiquetas humanas (``estos dos textos son parecidos''). No etiquetamos
+NADA. El truco: \textbf{MultipleNegativesRankingLoss} — en cada lote de 16 papers, el título
+de un paper debe quedar más cerca de \emph{su propio} abstract que de los otros 15 del lote.
+Positivos gratis (título y abstract del mismo paper hablan de lo mismo) y negativos gratis
+(los demás del lote). Un corpus plano se vuelve dataset de entrenamiento sin mover un dedo.
+\end{concepto}
+
+\begin{concepto}{el vocabulario del entrenamiento}
+\begin{itemize}
+  \item \textbf{loss (pérdida)}: el número que mide ``qué tan equivocado va'' el modelo;
+        entrenar = empujar los pesos para bajarlo.
+  \item \textbf{paso (step)}: procesar un lote y ajustar pesos una vez. Viste ``160 pasos''.
+  \item \textbf{época (epoch)}: una pasada completa por todo el dataset. Hicimos 2.
+  \item \textbf{warmup}: los primeros pasos con ajustes suavecitos, para no desbaratar lo
+        que el modelo ya sabía.
+  \item \textbf{mixed precision (amp)}: cuentas en números de menor precisión donde no
+        importa — el motivo de parte de la velocidad en GPU.
+\end{itemize}
+\end{concepto}
+
+\begin{ojo}
+\textbf{Los tropiezos también enseñan}: el entrenamiento falló DOS veces antes de arrancar —
+faltaban \codigo{datasets} y luego \codigo{accelerate} (el kit del Trainer de Hugging Face).
+Lección de ecosistema: en ML moderno ``instalar la librería'' rara vez basta; el stack de
+entrenamiento es su propia bestia. Ambas quedaron en requirements.txt para siempre.
+Y antes de eso: pip se negó a cambiar torch CPU$\rightarrow$CUDA porque ``la versión ya
+estaba satisfecha'' (mismo número, distinta variante) — se resolvió con
+\codigo{--force-reinstall --no-deps}.
+\end{ojo}
+
+\section{Cómo se juzga si valió la pena (6.6)}
+
+Un modelo nuevo no es mejor por existir. \codigo{froth/compare.py} somete a AMBOS modelos
+al mismo examen sobre los 22 topics: mismos corpus, mismo UMAP (semilla fija), granularidad
+elegida por DBCV — ¿quién produce clusters más válidos? Además exporta un \textbf{test
+ciego}: dos listados de clusters A/B con la clave escondida, para que el experto (tú)
+juzgue sin saber quién es quién. Si specter-mineral no gana, eso TAMBIÉN es un resultado
+honesto y publicable.
+
+\begin{resumen}
+Fine-tuning = empujar pesos existentes hacia tu dominio; MNRL convierte el corpus en
+dataset sin etiquetar (tu título debe amar a tu abstract más que a los ajenos); 83s en tu
+GPU tras dos tropiezos de dependencias. El veredicto lo dan DBCV en 22 topics y tu test
+ciego — no el entusiasmo.
+\end{resumen}
+
+\end{document}

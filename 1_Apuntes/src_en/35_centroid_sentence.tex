@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{35}{The centroid sentence: the relevance filter in reverse}
+
+\section{The idea (you already knew it without knowing)}
+
+In Phase 3, the relevance filter measured each paper's cosine against the TOPIC vector and
+\emph{discarded} whatever was far. The centroid sentence uses the SAME mathematics with the
+opposite intention: measure each sentence's cosine against the cluster's centre and
+\emph{crown} whatever is closest.
+
+\begin{concepto}{centroid and representative sentence}
+The \textbf{centroid} of a cluster is the average of its papers' vectors (768D): its ``semantic
+centre of mass''. The abstracts' sentences are vectorised with the SAME model (SPECTER), so
+they live in the same space and are comparable. The sentence with the highest cosine to the
+centroid is the one that best sums up what the subtopic is about, chosen by geometry, not by
+opinion.
+\end{concepto}
+
+\section{The real results (Beauvoir corpus, 237 papers)}
+
+\texttt{python -m froth.review} on your data:
+
+\begin{itemize}
+  \item Geology cluster (``ma, melt, compositions''): score \textbf{0.947} for
+        \emph{``LCT-type granitic pegmatites represent a major global source of
+        lithium...''}, a textbook definition of the subtopic.
+  \item USGS cluster (``usgs, old scrap, year''): \emph{``Minerals Yearbook, These annual
+        publications review the mineral industries of the United States...''} The keywords
+        never told you that cluster is ANNUAL REPORTS; the sentence does.
+  \item Lepidolite flotation cluster: \emph{``Efficient flotation of lepidolite is crucial for
+        the extraction and recycling of lithium resources...''}
+\end{itemize}
+
+This settles your request for meaningful titles (7.1b): keywords to classify, \textbf{centroid
+sentence as a subtitle} to understand.
+
+\section{Two guards against traps}
+
+\begin{itemize}
+  \item \textbf{Per-paper cap} (\texttt{per\_paper\_cap=2}): without it, a very ``central''
+        abstract could monopolise a cluster's entire summary.
+  \item The centroid is computed over the PAPER vectors (the ones on the map), not over the
+        sentences: that way the summary is faithful to the same space the user is looking at.
+\end{itemize}
+
+\begin{ojo}
+The top sentences resemble the centroid... and therefore they resemble EACH OTHER: centroid
+ranking tends towards redundancy (three sentences saying the same thing). That is exactly the
+problem MMR attacks in sub-phase 7.3.
+\end{ojo}
+
+\begin{resumen}
+Centroid sentence $=$ cosine(sentence, cluster centre), the same mathematics as the relevance
+filter but to crown instead of discard. On Beauvoir it produces textbook definitions with
+scores of 0.92 to 0.95. Its weakness (redundancy) is corrected by MMR (7.3).
+\end{resumen}
+
+\end{document}

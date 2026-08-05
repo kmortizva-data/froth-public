@@ -1,0 +1,78 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{06}{Cargar SPECTER y tu primer vector (usar vs.\ construir un modelo)}
+
+\section{Qué hicimos}
+
+En el Apunte 05 vimos la \emph{idea} del embedding. Aquí lo tocamos de verdad: tomamos un
+paper real de tu tabla y lo convertimos en su vector.
+
+\begin{enumerate}
+  \item Cargamos un paper (título + abstract) desde \codigo{2\_Datos/processed/papers.parquet}.
+  \item Cargamos el modelo con una línea: \codigo{SentenceTransformer("allenai-specter")}.
+  \item Lo convertimos: \codigo{model.encode(texto)} $\rightarrow$ un vector de \textbf{768 números}.
+\end{enumerate}
+
+El paper de prueba fue \emph{``Electrostatically Controlled Enrichment of Lepidolite via
+Flotation''} y su vector empezaba por \codigo{[-0.59, -0.16, 1.34, ...]}. Ese paper es ahora
+un punto en el mapa del significado.
+
+\begin{concepto}{modelo preentrenado, en la práctica}
+La primera vez que llamas a \codigo{SentenceTransformer("allenai-specter")}, la librería
+\textbf{descarga} el modelo ($\sim$440 MB) desde el repositorio Hugging Face y lo guarda en
+una \emph{caché} en tu disco. Las siguientes veces lo carga de ahí, al instante, sin internet.
+No entrenas nada: usas pesos que otros ya calcularon.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Título + abstract, no solo abstract.} SPECTER fue entrenado para recibir el título
+pegado al abstract, porque el título aporta señal fuerte del tema. Por eso el código hace
+\codigo{texto = titulo + ". " + abstract} antes de vectorizar. Un detalle pequeño que mejora
+los resultados.
+\end{ojo}
+
+\begin{ojo}
+\textbf{Los \emph{warnings} que salieron son inofensivos.} Uno hablaba de ``symlinks'' (una
+optimización de disco en Windows) y otro de ``HF\_TOKEN'' (una llave opcional para descargar
+más rápido). Ninguno impide nada: el modelo cargó y funcionó. Aprende a distinguir un
+\emph{warning} (aviso, sigue adelante) de un \emph{error} (se detiene).
+\end{ojo}
+
+\section{La pregunta clave: ¿construimos nosotros el modelo?}
+
+\textbf{No.} Y conviene tener clarísima la diferencia entre dos cosas que suenan parecidas:
+
+\begin{center}
+\begin{tabular}{p{4.3cm} p{4.3cm} p{4.3cm}}
+ & \textbf{USAR un modelo} & \textbf{ENTRENAR un modelo} \\[2pt]
+\hline
+¿Qué haces? & Descargas uno ya hecho y le pasas texto & Le enseñas desde cero con datos; ajustas sus ``pesos'' \\[6pt]
+¿Cuánto cuesta? & Una línea de código, segundos & Semanas, muchos datos, tarjetas gráficas (GPU) \\[6pt]
+¿En Froth? & \textbf{Fases 2 a 5} (lo de ahora) & \textbf{Fase 6}, opcional y avanzada \\
+\end{tabular}
+\end{center}
+
+\begin{concepto}{por qué reutilizar es lo correcto (ahora)}
+Para dibujar las burbujas y el mapa, el SPECTER genérico —entrenado con millones de papers
+de todas las áreas— es más que suficiente. Entrenar tu propio modelo de embeddings desde
+cero sería reinventar la rueda, carísimo y sin ganancia clara en esta etapa. Regla del
+proyecto: \emph{reciclar sin vergüenza}. Lo original de tu trabajo está en \textbf{cómo
+combinas} las piezas y el problema que resuelves, no en re-fabricar el motor.
+\end{concepto}
+
+\section{Entonces, ¿cuándo sí tocamos ``el modelo''?}
+
+En la \textbf{Fase 6} (la última, opcional). Ahí el experimento con potencial de tesis es
+\emph{afinar} (fine-tuning) un modelo con papers de tu propio dominio (minerales, flotación,
+metalurgia) y medir si produce \textbf{mejores} clusters que el SPECTER genérico. Eso sí es
+``construir algo tuyo'', y para entonces habrás aprendido PyTorch y cómo funciona un modelo
+por dentro. Es el postre, no el plato principal.
+
+\begin{resumen}
+El modelo de vectores (SPECTER) ya está construido: solo lo descargamos y usamos, no lo
+entrenamos. Usar $\neq$ entrenar; entrenar lo tuyo es la Fase 6, opcional. Por ahora,
+tranquilidad: el motor ya está hecho.
+\end{resumen}
+
+\end{document}

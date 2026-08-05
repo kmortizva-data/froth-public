@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{35}{La frase centroide: el filtro de relevancia al revés}
+
+\section{La idea (ya la conocías sin saberlo)}
+
+En la Fase 3, el filtro de relevancia medía el coseno de cada paper contra el vector del
+TOPIC y \emph{descartaba} lo lejano. La frase centroide usa la MISMA matemática con la
+intención opuesta: medir el coseno de cada frase contra el centro del cluster y
+\emph{coronar} lo más cercano.
+
+\begin{concepto}{centroide y frase representativa}
+El \textbf{centroide} de un cluster es el promedio de los vectores (768D) de sus papers:
+su ``centro de masa semántico''. Las frases de los abstracts se vectorizan con el MISMO
+modelo (SPECTER), así que viven en el mismo espacio y son comparables. La frase con mayor
+coseno al centroide es la que mejor resume de qué va el subtema --- elegida por geometría,
+no por opinión.
+\end{concepto}
+
+\section{Los resultados reales (corpus Beauvoir, 237 papers)}
+
+\texttt{python -m froth.review} sobre tus datos:
+
+\begin{itemize}
+  \item Cluster geología (``ma, melt, compositions''): score \textbf{0.947} para
+        \emph{``LCT-type granitic pegmatites represent a major global source of
+        lithium...''} --- una definición de libro del subtema.
+  \item Cluster USGS (``usgs, old scrap, year''): \emph{``Minerals Yearbook --- These
+        annual publications review the mineral industries of the United States...''}
+        Las keywords jamás te dijeron que ese cluster son INFORMES ANUALES; la frase sí.
+  \item Cluster flotación de lepidolita: \emph{``Efficient flotation of lepidolite is
+        crucial for the extraction and recycling of lithium resources...''}
+\end{itemize}
+
+Esto resuelve tu pedido de títulos con sentido (7.1b): keywords para clasificar,
+\textbf{frase centroide como subtítulo} para entender.
+
+\section{Dos guardas contra trampas}
+
+\begin{itemize}
+  \item \textbf{Tope por paper} (\texttt{per\_paper\_cap=2}): sin él, un abstract muy
+        ``central'' podría monopolizar el resumen entero del cluster.
+  \item El centroide se calcula sobre los vectores de PAPER (los del mapa), no sobre las
+        frases: así el resumen es fiel al mismo espacio que el usuario está viendo.
+\end{itemize}
+
+\begin{ojo}
+Las frases top se parecen al centroide... y por eso se parecen ENTRE SÍ: el ranking por
+centroide tiende a la redundancia (tres frases diciendo lo mismo). Ese es exactamente el
+problema que ataca MMR en la sub-fase 7.3.
+\end{ojo}
+
+\begin{resumen}
+Frase centroide = coseno(frase, centro del cluster), misma matemática que el filtro de
+relevancia pero para coronar en vez de descartar. En Beauvoir produce definiciones de
+libro con scores 0.92-0.95. Su debilidad (redundancia) la corrige MMR (7.3).
+\end{resumen}
+
+\end{document}

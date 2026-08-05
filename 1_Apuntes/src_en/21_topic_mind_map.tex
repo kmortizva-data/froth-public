@@ -1,0 +1,70 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{21}{The topic mind map (and the discovery of the silos)}
+
+\section{Going up a level: from papers to topics}
+
+The network of Note 20 has 120 nodes: good for exploring, bad for \emph{presenting}. The
+\textbf{topic mind map} aggregates the information one level up: each \textbf{whole subtopic
+becomes ONE node} (size $=$ number of papers) and the edges summarise the relation between
+subtopics. It is the executive view: 3 or 4 bubbles that tell the whole field.
+
+\begin{concepto}{aggregation: the same network, less resolution}
+This trick, grouping nodes and summarising their relations, is called \emph{aggregation} and
+it is universal: from people $\rightarrow$ departments, from streets $\rightarrow$ cities, from
+papers $\rightarrow$ subtopics. You lose detail, you gain legibility. That is why we keep
+\emph{both} networks: the paper one (to explore) and the topic one (to understand and
+present).
+\end{concepto}
+
+\section{The edges carry TWO numbers (and that is the point)}
+
+Between each pair of subtopics we measure two different things:
+\begin{enumerate}
+  \item \textbf{Similarity} $=$ the average cosine between the papers of one and the other (in
+        768D). ``How related is what they \emph{study}?''
+  \item \textbf{Cross-citations} $=$ how many times a paper in one subtopic \emph{cites} one in
+        the other. ``How much do they \emph{read} each other?''
+\end{enumerate}
+
+\section{The finding: silos (your gap, quantified)}
+
+With your data this came out:
+
+\begin{center}
+\begin{tabular}{lcc}
+\textbf{Relation} & \textbf{Similarity} & \textbf{Cross-citations} \\
+\hline
+Geology $\leftrightarrow$ Flotation & 0.688 & \textbf{1} \\
+Geology $\leftrightarrow$ Economy/recycling & 0.662 & 3 \\
+Flotation $\leftrightarrow$ Economy/recycling & 0.683 & 1 \\
+\end{tabular}
+\end{center}
+
+\begin{ojo}
+Read the first row with a thesis writer's eyes: geology and flotation \textbf{study very
+related things} (0.69 is high) but \textbf{barely cite each other}, 1 citation among 90
+papers! Of the corpus's 116 internal citations, only 5 cross subtopic borders: the communities
+are \textbf{silos}, connected by meaning, separated by habit.
+
+Your thesis (``flotation of Li micas \emph{and its impact on} the recovery of granite
+by-products'') lives exactly in that silence between silos. This is a \emph{gap} that is
+quantified and citable in your introduction: Phase 5 will formalise this detection.
+\end{ojo}
+
+\section{Where it lives in the code}
+
+\codigo{froth/graph.py} $\rightarrow$ \codigo{build\_topic\_graph()}: nodes with
+label / number of papers / citations / centroid, edges with similarity and cross-citations. It
+prints when you run \codigo{python -m froth.graph}; the preview is in
+\codigo{3\_Resultados/topic\_mindmap.png}.
+
+\begin{resumen}
+Aggregating the paper network up to topic level gives the executive view (3 or 4 bubbles).
+Each edge carries similarity (what they study) and citations (what they read), and in your
+corpus they diverge: closely related subtopics that do not cite each other $=$ silos $=$ your
+gap, already with numbers.
+\end{resumen}
+
+\end{document}

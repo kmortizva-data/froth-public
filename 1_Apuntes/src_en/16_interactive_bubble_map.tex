@@ -1,0 +1,72 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{16}{The interactive bubble map (Plotly) and the slider trick}
+
+\section{What we built}
+
+The star deliverable of Phase 3: the \textbf{interactive bubble map} of your 126 papers. It
+exists in two forms, fed by the same code:
+\begin{enumerate}
+  \item \codigo{3\_Resultados/topic\_map.html}: a self-contained file. Double click and it
+        opens in any browser, no server needed. Shareable.
+  \item The \textbf{Topic map} tab of your web app (\codigo{app.py}), with live controls.
+\end{enumerate}
+
+What you see: one dot per paper, one colour per subtopic (geology blue, flotation green,
+economy/other orange, noise grey), size $=$ citations, each subtopic's label floating over its
+cloud, and on hover: title, authors, year, citations.
+
+\begin{concepto}{Plotly}
+A library for \textbf{interactive} charts: instead of a fixed image (matplotlib), it produces
+HTML $+$ JavaScript with zoom, pan, tooltips and a clickable legend ``for free''. That is why
+the map can be saved as a file and opened anywhere: the browser does the work.
+\end{concepto}
+
+\begin{concepto}{one figure, two faces (architecture)}
+The \codigo{bubble\_figure()} function in \codigo{froth/visualize.py} builds the figure, and
+TWO clients reuse it: \codigo{plot\_bubbles()} saves it as HTML, and \codigo{app.py} shows it
+in Streamlit. If tomorrow you improve the map, it improves in both places at once. General
+principle: \emph{you do not duplicate the engine; you wrap it}.
+\end{concepto}
+
+\section{The granularity slider trick}
+
+The web app has a ``min papers per subtopic'' slider that re-groups the map \textbf{instantly}.
+How can it be so fast, if the pipeline takes time?
+
+\begin{concepto}{separating the slow from the fast}
+The pipeline has two very different parts:
+\begin{itemize}
+  \item \textbf{Slow}: UMAP (arranging 126 points down from 768D). Computed ONCE and cached.
+  \item \textbf{Fast}: HDBSCAN over the already-arranged 2D points (milliseconds) $+$ relabelling.
+\end{itemize}
+The key: granularity \textbf{does not affect UMAP}, only HDBSCAN. So moving the slider only
+repeats the cheap part. Identifying what can be cached and what must be recomputed is a core
+data engineering skill, and you have just used it.
+\end{concepto}
+
+\begin{ojo}
+Granularity is a \textbf{reading decision}, not a truth: with a low value you will see many
+small subtopics (more detail, more fragmentation); with a high value, a few big ones (more
+synthesis). There is no ``correct number of clusters'', there is the one that best tells the
+story for your purpose. That is why it is your slider and not a hidden constant.
+\end{ojo}
+
+\section{Where we stand against the competition}
+
+With this map we reach visual and interactive \textbf{parity} (hover, zoom, filters, size by
+citations) with Connected Papers, Litmaps or VOSviewer. And we already have differentiators
+they do not: a map by \emph{content} (not citations), auto-named subtopics, live granularity,
+separable noise, integrated semantic search, and all of it open source. The star
+differentiators (gaps $+$ review draft $+$ task/PDF module) arrive in Phases 4 and 5. The full
+table lives in \codigo{CLAUDE.md}.
+
+\begin{resumen}
+Plotly turns the topic map into an interactive map with two faces (shareable HTML and an app
+tab) from a single function; the granularity slider is instant because it only repeats the
+cheap part (2D HDBSCAN), not the expensive one (UMAP). Parity with the competition: achieved;
+the big differentiators come in Phases 4 and 5.
+\end{resumen}
+
+\end{document}

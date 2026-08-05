@@ -1,0 +1,73 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{01}{Python, the engine; and the virtual environment, the toolbox}
+
+\section{Python: what it really is}
+
+The \codigo{.py} files in the \codigo{froth/} folder are plain text: written recipes.
+\textbf{Python} is the program that knows how to read and run them (the ``engine''). That is
+why the first step of the project was installing it: with no engine, the recipes are just
+paper.
+
+Your machine ended up with \textbf{Python 3.14}. When you type \codigo{python file.py} in a
+terminal, you are saying: ``engine, run this recipe''.
+
+\begin{concepto}{library (package)}
+Almost nothing is programmed from scratch. A \textbf{library} is packaged code that other
+people wrote and that you install and reuse: \codigo{requests} (talking to the internet),
+\codigo{pandas} (data tables), and so on. They are installed with the \codigo{pip} tool,
+which comes with Python. Think of them as apps you install into the engine.
+\end{concepto}
+
+\section{The problem the virtual environment solves}
+
+Imagine two projects on your PC: one needs \codigo{pandas} version 2 and the other version
+3. If you install everything ``into the system'', they step on each other and something
+breaks. The standard solution:
+
+\begin{concepto}{virtual environment (venv)}
+A \textbf{bubble folder} (in our case \codigo{.venv/} inside the project) holding a private
+copy of Python and its libraries, exclusive to this project. What you install inside touches
+nothing outside, and the other way round.
+
+It was created with: \codigo{python -m venv .venv}
+
+And since then, to run anything in the project we use the Python \emph{from the bubble}:
+\codigo{.venv\textbackslash Scripts\textbackslash python.exe}. That odd path at the start of
+every command means exactly that: ``use THIS project's engine''.
+\end{concepto}
+
+\section{requirements.txt: the shopping list}
+
+The \codigo{requirements.txt} file lists the libraries the project needs, with a comment
+saying what each one is for. Anyone (you on another PC, a colleague) can recreate the
+environment with a single order:
+\begin{center}
+\codigo{.venv\textbackslash Scripts\textbackslash python.exe -m pip install -r requirements.txt}
+\end{center}
+In Froth we install them \emph{by phase}: today only the Phase 1 ones (\codigo{requests},
+\codigo{pandas}, \codigo{pyarrow}, \codigo{truststore}). The heavy ML ones will arrive when
+their turn comes.
+
+\begin{ojo}
+If a command tells you \codigo{ModuleNotFoundError: No module named 'pandas'}, it almost
+always means you ran it with the \textbf{system} Python instead of the bubble's. Check that
+the command starts with \codigo{.venv\textbackslash Scripts\textbackslash python.exe}.
+\end{ojo}
+
+\begin{practica}
+Open PowerShell (Windows key $\rightarrow$ type \codigo{powershell} $\rightarrow$ Enter) and:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe --version} \quad (it should say 3.14)
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m pip list} \quad (the libraries in your bubble)
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+Python runs the code; the \codigo{.venv} is the project's private bubble with its libraries;
+\codigo{requirements.txt} is the list for rebuilding it anywhere.
+\end{resumen}
+
+\end{document}

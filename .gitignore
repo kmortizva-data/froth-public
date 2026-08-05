@@ -1,0 +1,53 @@
+# --- Secretos (NUNCA subir) ---
+.openalex_key
+.froth_keys
+.env
+*.key
+
+# --- Privacidad: la hoja de asignacion trae NOMBRES de companeros (solo local) ---
+EMerald_masterthesis_allocation_cohort11.csv
+2_Datos/EMerald_masterthesis_allocation_cohort11.csv
+
+# --- Entorno virtual de Python ---
+.venv/
+venv/
+env/
+
+# --- Caché de Python ---
+__pycache__/
+*.pyc
+
+# --- Datos y salidas (se regeneran corriendo el pipeline; no se versionan) ---
+2_Datos/raw/*
+2_Datos/processed/*
+2_Datos/embeddings/*
+2_Datos/topics/
+2_Datos/master_corpus.parquet
+3_Resultados/*
+# ...pero conservamos las carpetas vacías con su .gitkeep:
+!2_Datos/raw/.gitkeep
+!2_Datos/processed/.gitkeep
+!2_Datos/embeddings/.gitkeep
+!3_Resultados/.gitkeep
+
+# --- Compilador LaTeX descargado (20 MB, se rebaja con el script) ---
+tools/
+
+# --- Modelos entrenados (Fase 6: ~440 MB cada uno; se regeneran con litmap.train) ---
+models/
+checkpoints/
+
+# --- Builds de distribución (se regeneran con packaging/make_portable.py) ---
+dist/
+
+# --- Notebooks: checkpoints de Jupyter ---
+.ipynb_checkpoints/
+
+# --- Varios del sistema operativo ---
+Thumbs.db
+.DS_Store
+
+# Local backups of a corpus before re-harvest (data, never ship)
+2_Datos/_backup_*/
+2_Datos/my_space.json
+docs/PRUEBA_REAL_local.md

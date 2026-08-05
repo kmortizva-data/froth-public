@@ -1,0 +1,74 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{24}{Qué es un gap (y cómo se mide de verdad)}
+
+\section{Por qué importan}
+
+Toda tesis debe aportar algo nuevo, y ``nuevo'' casi siempre significa \textbf{trabajar donde
+otros no han trabajado}. El problema: la frase ``research gap'' se usa mucho y se mide poco —
+suele ser una corazonada del supervisor. El diferenciador de Froth es convertir el gap en
+una \textbf{señal medible sobre los datos}, con evidencia que puedas citar.
+
+\section{Los 4 tipos de gap medibles}
+
+\begin{concepto}{1. El SILO (el más valioso)}
+Dos comunidades que estudian cosas \textbf{muy parecidas} pero \textbf{no se citan}: trabajan
+de espaldas. Se mide restando dos matrices que ya tenemos: similitud semántica entre clusters
+(alta) vs.\ citas cruzadas (bajas). \textbf{Tu corpus lo tiene}: geología $\leftrightarrow$
+flotación $=$ similitud 0.69 con \textbf{una sola cita cruzada} (Apunte 21). Dos mundos
+hablando del mismo granito sin hablarse. Quien conecte esos mundos, aporta.
+\end{concepto}
+
+\begin{concepto}{2. La ZONA RALA}
+Regiones vacías del mapa \emph{entre} nubes densas: combinaciones de temas que nadie tocó.
+Se mide con densidad espacial en el espacio de embeddings (¿cuántos papers viven entre el
+centroide de A y el de B?).
+\end{concepto}
+
+\begin{concepto}{3. El PUENTE ESCASO}
+Entre dos clusters solo existen 1--2 papers puente (la betweenness del Apunte 20 concentrada
+en poquitos nodos). Si cruzar ese puente produce valor y casi nadie lo ha cruzado, hay sitio
+para más viajeros.
+\end{concepto}
+
+\begin{concepto}{4. El TEMA DORMIDO}
+Un subtema cuyos papers son todos viejos: conocimiento que nadie revisita con métodos
+modernos. Se mide con la distribución de años por cluster (¿cuándo fue el último paper?).
+\end{concepto}
+
+\section{La advertencia: mina o desierto}
+
+\begin{ojo}
+Un hueco puede estar vacío por dos razones: porque \textbf{nadie lo exploró} (una mina
+esperando) o porque \textbf{no hay nada que encontrar} (un desierto — a veces la combinación
+de temas es estéril por buenas razones físicas o económicas). \textbf{Ningún algoritmo
+distingue una de otra.} Por eso Froth \emph{propone candidatos con evidencia} y el experto
+decide. Desconfía de cualquier herramienta que prometa ``gaps automáticos garantizados'';
+la nuestra promete candidatos honestos con sus números.
+\end{ojo}
+
+\section{Tu tesis ya es la prueba del concepto}
+
+El título de la tesis (flotación de micas de Li \textbf{y su impacto en} la recuperación de
+by-products del granito de Beauvoir) explota \emph{exactamente} el silo \#1: une el cluster
+de flotación con el de geología. Fareed encontró ese gap a ojo y con experiencia; Froth lo
+encontró con números — similitud alta, una cita cruzada, y el paper de caracterización de
+Beauvoir como puente solitario (Apunte 20). Esa doble confirmación (experto + datos) es la
+validación más fuerte que puede tener el método.
+
+\section{Lo que viene (5.1)}
+
+Implementar las cuatro señales en \codigo{gaps.py} $\rightarrow$ \codigo{find\_gaps()}
+devolverá una tabla rankeada: cada gap candidato con su tipo, su evidencia (similitud, citas,
+densidad, años) y los papers frontera que ya lo rondan. Después (5.2), el borrador de review
+citará esos gaps con números — no con corazonadas.
+
+\begin{resumen}
+Un gap medible tiene 4 formas: silos (parecidos que no se citan), zonas ralas, puentes
+escasos y temas dormidos. La herramienta propone candidatos con evidencia; el experto
+distingue minas de desiertos. Tu propia tesis es el silo geología-flotación de Beauvoir,
+ahora confirmado con números.
+\end{resumen}
+
+\end{document}

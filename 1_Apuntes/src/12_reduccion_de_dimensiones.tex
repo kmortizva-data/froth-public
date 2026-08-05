@@ -1,0 +1,99 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{12}{Reducción de dimensiones: de 768 a 2 sin perder el vecindario}
+
+\section{El problema}
+
+Cada paper es un punto en \textbf{768 dimensiones} (Apuntes 05--07). Tu pantalla tiene
+\textbf{2}. Para dibujar el mapa hay que ``aplastar'' — pero un mal aplastado encima puntos
+que no tienen nada que ver, y el mapa engaña. La pregunta de este apunte:
+\emph{¿cómo se aplasta conservando quién está cerca de quién?}
+
+\section{La intuición clásica: PCA y las sombras}
+
+\begin{concepto}{PCA (análisis de componentes principales)}
+Piensa en la \textbf{sombra} de tu mano en la pared: un objeto 3D proyectado en 2D. Si
+orientas bien la mano, la sombra conserva la forma (se ven los dedos); si la orientas mal,
+todo se encima. \textbf{PCA busca el ``ángulo de luz'' que menos información pierde}: las
+direcciones en las que los datos más varían. Es la técnica clásica, rápida y muy usada.
+\end{concepto}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+  \fill[litblue!60] (0.3,2.1) circle (3pt);
+  \fill[litblue!60] (0.8,2.5) circle (3pt);
+  \fill[litblue!60] (0.5,2.9) circle (3pt);
+  \fill[litorange!80] (2.6,0.6) circle (3pt);
+  \fill[litorange!80] (3.1,1.0) circle (3pt);
+  \fill[litorange!80] (2.9,0.3) circle (3pt);
+  \draw[->,gray,thick] (-0.5,0) -- (4,0) node[below left] {\small proyección buena};
+  \draw[litblue] (0.3,0.08) -- (0.9,0.08);
+  \draw[litorange] (2.5,0.08) -- (3.2,0.08);
+  \node[gray] at (1.7,-0.75) {\small los dos grupos siguen separados};
+
+  \begin{scope}[xshift=7cm]
+    \fill[litblue!60] (0.5,2.3) circle (3pt);
+    \fill[litblue!60] (1.0,2.7) circle (3pt);
+    \fill[litblue!60] (0.7,3.1) circle (3pt);
+    \fill[litorange!80] (0.4,0.6) circle (3pt);
+    \fill[litorange!80] (0.9,1.0) circle (3pt);
+    \fill[litorange!80] (0.7,0.3) circle (3pt);
+    \draw[->,gray,thick] (-0.5,0) -- (4,0) node[below left] {\small proyección mala};
+    \draw[litblue] (0.45,0.10) -- (1.05,0.10);
+    \draw[litorange] (0.35,0.06) -- (0.95,0.06);
+    \node[gray] at (1.7,-0.75) {\small ¡los grupos se enciman!};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+Limitación: PCA solo hace proyecciones \emph{rectas} (lineales). Si los datos forman nubes
+curvas o enredadas —como suele pasar con texto—, hasta el mejor ángulo encima cosas.
+
+\section{La moderna: UMAP y la mudanza de vecindarios}
+
+\begin{concepto}{UMAP}
+UMAP no proyecta sombras. Trabaja en dos tiempos:
+\begin{enumerate}
+  \item En 768D, apunta para cada paper \textbf{quiénes son sus vecinos más cercanos}.
+  \item Coloca los puntos en 2D doblando y estirando lo que haga falta, con una sola
+        obsesión: \textbf{que cada punto conserve a sus vecinos al lado}.
+\end{enumerate}
+Como mudar una ciudad a un mapa más pequeño garantizando que cada casa siga junto a las
+mismas casas de antes, aunque las distancias largas cambien. Por eso UMAP separa nubes que
+PCA enciman: no está limitado a proyecciones rectas.
+\end{concepto}
+
+\section{La letra pequeña: todo mapa 2D miente un poco}
+
+\begin{ojo}
+Al aplastar 768 dimensiones a 2 \textbf{siempre} se pierde algo. En un mapa UMAP:
+\begin{itemize}
+  \item \textbf{Confía en}: quién está pegado a quién; las nubes/grupos que se forman.
+  \item \textbf{NO confíes en}: las distancias largas (``este cluster está al doble de
+        distancia que aquel'') ni en el tamaño aparente de las nubes.
+  \item Los ejes X e Y \textbf{no significan nada} (no son ``más flotación'' o ``más
+        litio''); son solo el resultado del acomodo. Por eso los mapas UMAP se publican
+        sin números en los ejes.
+\end{itemize}
+Saber esto te pone por delante de mucha gente que interpreta estos mapas de más.
+\end{ojo}
+
+\section{Cómo lo usaremos (lo que viene)}
+
+\begin{enumerate}
+  \item Instalar \codigo{umap-learn} (si Python 3.14 lo permite; hay plan B con PCA/t-SNE
+        de scikit-learn — cambia la pieza, no el concepto).
+  \item Correr UMAP sobre la matriz $126 \times 768$ $\rightarrow$ tabla de 126 puntos (x, y).
+  \item Dibujar el primer scatter: tu primer vistazo al mapa (Apunte 13).
+  \item Después, agrupar las nubes en subtemas con HDBSCAN (Apunte 14).
+\end{enumerate}
+
+\begin{resumen}
+PCA aplasta buscando el mejor ``ángulo de sombra'' (rápido pero recto); UMAP reacomoda
+preservando los vecindarios (ideal para texto). En el mapa resultante: confía en los
+vecinos y las nubes, desconfía de distancias largas, y los ejes no significan nada.
+\end{resumen}
+
+\end{document}

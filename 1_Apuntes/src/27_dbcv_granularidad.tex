@@ -1,0 +1,43 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{27}{Granularidad recomendada: que los datos elijan (DBCV)}
+
+\section{La pregunta de Batman que originó esto}
+
+``Quiero un botón de \emph{ajustar a recomendado} con una razón estadística REAL — no un
+valor estándar, sino calculado cada vez.'' Exactamente la actitud correcta: los defaults
+fijos son opiniones; los datos cambian con cada corpus.
+
+\section{La métrica correcta: DBCV}
+
+\begin{concepto}{DBCV (Density-Based Cluster Validity)}
+Para evaluar un clustering \emph{por densidad} (HDBSCAN) no sirve cualquier métrica: la
+famosa \emph{silhouette}, por ejemplo, asume clusters redondos y compactos. \textbf{DBCV}
+es la métrica nativa de la familia: premia clusterings cuyos grupos son \textbf{densos por
+dentro} y están \textbf{bien separados por fuera}, respetando formas irregulares.
+En código: \codigo{hdbscan.HDBSCAN(gen\_min\_span\_tree=True).relative\_validity\_}.
+\end{concepto}
+
+\begin{concepto}{el barrido (sweep)}
+\codigo{cluster.recommend\_min\_cluster\_size()} prueba TODAS las granularidades de 3 a 20,
+calcula la validez DBCV de cada una, descarta las degeneradas (1 solo cluster no es un
+clustering) y devuelve la ganadora + una tabla de diagnóstico. Con el corpus ampliado de
+hoy: recomendado $= 7$ (validez 0.51). Si mañana el corpus cambia, se recalcula solo
+(cacheado por versión de datos).
+\end{concepto}
+
+\begin{ojo}
+La recomendación es un \emph{óptimo estadístico}, no una verdad final: optimiza densidad y
+separación, no ``qué historia le sirve al experto''. Por eso el slider sigue ahí — divagar
+está permitido y el botón siempre te trae de vuelta. Máquina propone; humano dispone
+(el patrón de todo Froth).
+\end{ojo}
+
+\begin{resumen}
+El botón ``Use recommended'' no guarda un número mágico: barre granularidades y elige la que
+maximiza DBCV — la métrica de calidad nativa del clustering por densidad — recalculada para
+cada corpus. Estadística real, con el slider libre para explorar.
+\end{resumen}
+
+\end{document}

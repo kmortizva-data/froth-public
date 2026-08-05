@@ -1,0 +1,70 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{25}{From theory to text: find\_gaps() and the review draft}
+
+\section{What we built (5.1 $+$ 5.2)}
+
+The two halves of the differentiator, already working in \codigo{froth/gaps.py}:
+\begin{enumerate}
+  \item \codigo{find\_gaps()}: turns the 4 types from Note 24 into measured signals
+        $\rightarrow$ a ranked table with evidence
+        (\codigo{2\_Datos/processed/gaps.parquet}).
+  \item \codigo{draft\_review()}: writes the scaffolding of the literature review
+        (\codigo{3\_Resultados/review\_draft.md}) with \textbf{100\% traceable citations}.
+\end{enumerate}
+They run together: \codigo{python -m froth.gaps}.
+
+\section{The gaps in YOUR corpus (real results)}
+
+\begin{center}
+\begin{tabular}{lp{6.2cm}l}
+\textbf{Type} & \textbf{Top candidate} & \textbf{Evidence} \\
+\hline
+Silo & commodities/criticals $\leftrightarrow$ flotation & sim 0.69, \textbf{1} cross-citation \\
+Silo & flotation $\leftrightarrow$ geology (\emph{your thesis}) & sim 0.70, 3 cross-citations \\
+Scarce bridge & commodities $\leftrightarrow$ geology & only 8 bridges despite sim 0.67 \\
+Dormant & (none: hot field, 2025-26 papers) & the tool says so honestly \\
+\end{tabular}
+\end{center}
+
+A close reading of the champion silo: the \emph{criticality / supply chain} literature and the
+\emph{processing} literature barely cite each other. Connecting them (``my flotation matters
+for Li/Ta supply security'') is direct ammunition for introductions and proposals.
+
+\begin{ojo}
+The weakest signal is the \textbf{sparse zone}: it measures \emph{absences}, and a void does
+not explain its reason (mine or desert?), on top of inheriting the distortions of the 2D map
+(Note 12). That is why it is labelled ``experimental'' in the code and in the draft. General
+rule: distrust metrics about what is missing more than metrics about what exists.
+\end{ojo}
+
+\section{The draft: why a template and not an LLM}
+
+\begin{concepto}{traceable citations or nothing}
+The draft is generated with a \textbf{deterministic template}: each section is born from the
+MEASURED structure (sections $=$ clusters; must-reads $=$ most cited $+$ local hubs; novelties
+$=$ most recent; holes $=$ gaps with their numbers) and every statement points at real papers
+with a numbered reference [n] $\rightarrow$ a final list with author/year/title/DOI. An LLM
+would write more elegantly... and sooner or later it would \emph{invent} a reference, the
+capital sin in academia. Correct order: first the trustworthy scaffolding, then (optionally) an
+LLM that polishes the prose while \emph{verifying} every citation against the corpus.
+\end{concepto}
+
+\section{Against the competition (a different neighbourhood)}
+
+Here the rivals are not the mappers but Elicit/SciSpace/Consensus (an LLM synthesising
+\emph{without} knowing the corpus structure), Scholarcy (one-to-one summaries) and plain
+ChatGPT (hallucinated references). \textbf{Nobody joins map and text}: our draft says ``these
+two subtopics share 0.69 similarity and a single cross-citation'' because it measured it.
+Honest limit: we work with abstracts (Elicit extracts from full text) $\rightarrow$ ours is a
+\emph{structured scaffolding}, not final prose.
+
+\begin{resumen}
+find\_gaps() produces ranked candidates with evidence (silos at the front: commodities-
+flotation 0.69 with 1 citation; your thesis reconfirmed at 0.70 with 3); draft\_review() turns
+them into a review scaffolding with 26 traceable references, with no LLM. Nobody else joins
+map and text.
+\end{resumen}
+
+\end{document}

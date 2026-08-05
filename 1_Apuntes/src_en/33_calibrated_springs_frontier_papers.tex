@@ -1,0 +1,56 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{33}{Calibrated springs and frontier papers: what position means in the network}
+
+\section{Your question: ``do the springs mean anything?''}
+
+In the Network view the nodes arrange themselves with a \textbf{force layout} (forceAtlas2):
+each edge is a spring pulling things together, and all the nodes repel each other like charges.
+The equilibrium of that tug of war decides the position. By default vis.js uses the SAME spring
+length for every edge, so visual distance was pure aesthetics.
+
+\section{The calibration: length $=$ dissimilarity}
+
+Our edges already carry a weight $w$ $=$ cosine similarity (with a 0.75 threshold). Now each
+spring is made to measure:
+\[
+\mathrm{length} = 60 + 420\,(1 - w)
+\]
+Nearly identical neighbours ($w \to 1$) end up $\sim$60 px apart; the ones that barely passed
+the threshold, $\sim$165 px. Since that change, \textbf{close on screen $\approx$ close in
+meaning}. The network answers the same question as the UMAP map, but with the connections made
+explicit.
+
+\section{The mystery of the ``yellow node stuck to the blue hub''}
+
+You noticed nodes of one colour sitting inside another's territory. It was not a bug: they were
+\textbf{frontier papers}. The chain of events:
+
+\begin{enumerate}
+  \item HDBSCAN cuts the clusters on the \textbf{2D} UMAP map.
+  \item The network connects neighbours in the original \textbf{768D}.
+  \item A paper can fall on the yellow side of the 2D cut while having almost all its semantic
+        neighbours in the blue cluster $\rightarrow$ the springs drag it towards the blue.
+\end{enumerate}
+
+\begin{concepto}{frontier paper detection}
+For each node we count its neighbours' clusters. If $\geq 60\%$ belong to ANOTHER cluster, it
+is a frontier paper: it is drawn with a \textbf{dashed ring in the neighbouring cluster's
+colour} and the tooltip declares it (``bridges into the neighboring subtopic''). In Beauvoir:
+3 out of 237 papers.
+\end{concepto}
+
+\begin{ojo}
+Frontier papers are not clustering errors: they tend to be the interdisciplinary ones, exactly
+those connecting subtopics. For a reader hunting research gaps, they are among the most
+interesting on the map.
+\end{ojo}
+
+\begin{resumen}
+Springs with length $= 60 + 420(1-w)$: visual proximity now IS semantic distance. The
+``misplaced'' nodes are frontier papers (most of their neighbours in another cluster), now
+marked with a dashed ring in the neighbour's colour.
+\end{resumen}
+
+\end{document}

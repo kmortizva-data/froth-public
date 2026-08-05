@@ -1,0 +1,83 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{20}{La red de similitud: K vecinos, umbral, y tus hubs y puentes reales}
+
+\section{Cómo se construyó la red}
+
+Cada paper se conecta con sus \textbf{K papers más parecidos} (similitud coseno calculada en
+el espacio \textbf{original de 768D} — no en el mapa 2D, que ya sabemos que distorsiona), y
+solo sobreviven las conexiones con similitud $\geq$ un \textbf{umbral}. Es el llamado
+\emph{grafo kNN} (k nearest neighbors).
+
+\begin{concepto}{las perillas K y umbral: nadie las ``sabe'', se prueban}
+Preguntaste: ¿y quién dice que 5 vecinos es lo ideal? Respuesta honesta: \textbf{nadie} — es
+una perilla, como la granularidad. La forma seria de elegirla es probar valores y mirar la
+estructura resultante:
+
+\begin{center}
+\begin{tabular}{rrrrr}
+\textbf{K} & \textbf{líneas} & \textbf{conex./paper} & \textbf{piezas} & \textbf{\% entre clusters} \\
+\hline
+3 & 281 & 4.7 & 1 & 17\% \\
+\textbf{5} & \textbf{457} & \textbf{7.6} & \textbf{1} & \textbf{21\%} \\
+8 & 702 & 11.7 & 1 & 24\% \\
+15 & 1213 & 20.2 & 1 & 30\% \\
+\end{tabular}
+\end{center}
+
+K alto revela más cruces entre temas (tus primeros vecinos son de tu familia; los lejanos
+cruzan fronteras) pero con 20 conexiones por paper el dibujo es ilegible (``bola de pelo'').
+Elegido: \textbf{K=5, umbral 0.75} — legible, con puentes visibles y la red en una sola
+pieza. Ambos viven en \codigo{config.py} (\codigo{GRAPH\_KNN},
+\codigo{GRAPH\_SIM\_THRESHOLD}): cambiar de opinión cuesta una línea.
+\end{concepto}
+
+\section{Medir hubs y puentes (ya no a ojo)}
+
+\begin{concepto}{grado y betweenness}
+\begin{itemize}
+  \item \textbf{Hub} $=$ nodo con muchas conexiones $\rightarrow$ se mide con el
+        \textbf{grado} (contar sus aristas).
+  \item \textbf{Puente} $=$ nodo por el que pasan los caminos entre comunidades $\rightarrow$
+        se mide con la \textbf{betweenness centrality}: cuántas veces un nodo está en el
+        camino más corto entre otros dos. Un paper con \emph{pocas} conexiones puede ser un
+        gran puente si esas pocas unen mundos.
+\end{itemize}
+\end{concepto}
+
+\section{Los resultados con TUS papers}
+
+\textbf{Hubs} (las lecturas obligatorias del corpus):
+\begin{enumerate}
+  \item \emph{The Magmatic--Hydrothermal Transition in Lithium Pegmatites} (24 conexiones)
+  \item \emph{Electrostatically Controlled Enrichment of Lepidolite via Flotation} (15)
+  \item \emph{Mineral Chemistry of Two-Mica Granite Rare Metals} (15)
+\end{enumerate}
+
+\textbf{Puentes} (donde vive la novedad) — con dos hallazgos gordos:
+\begin{enumerate}
+  \item Entre los 5 puentes top está \emph{``Characterization and Liberation Study of the
+        \textbf{Beauvoir Granite}''}: el paper fundacional de TU yacimiento es un puente
+        entre comunidades. La red confirma \textbf{con números} que el territorio de tu
+        tesis (geología $\leftrightarrow$ procesamiento en Beauvoir) es terreno-frontera:
+        argumento de originalidad medible para tu introducción.
+  \item 3 de los 5 puentes top estaban etiquetados como \textbf{ruido} por HDBSCAN. La
+        lección del Apunte 14 (``ruido $\neq$ basura; son generalistas entre nubes'') se
+        cumplió cuantitativamente: \emph{el ruido de ayer son los puentes de hoy}.
+\end{enumerate}
+
+\section{Dónde vive en el código}
+
+\codigo{froth/graph.py}: \codigo{build\_similarity\_graph()} (la red, con atributos por
+nodo), \codigo{find\_hubs()} (grado), \codigo{find\_bridges()} (betweenness),
+\codigo{save\_graph()/load\_graph()} (formato GraphML en \codigo{2\_Datos/processed/}).
+Se corre con \codigo{python -m froth.graph}.
+
+\begin{resumen}
+Red kNN: cada paper con sus K=5 más parecidos (coseno en 768D), umbral 0.75 — perillas
+elegidas probando, guardadas en config. Grado encuentra hubs; betweenness encuentra puentes.
+Tu corpus confirmó: el paper de Beauvoir es un puente, y el ``ruido'' escondía a los puentes.
+\end{resumen}
+
+\end{document}

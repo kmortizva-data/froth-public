@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{10}{Cuadernos Jupyter: tu buscador interactivo}
+
+\section{Qué es un notebook y por qué importa}
+
+\begin{concepto}{Jupyter notebook}
+Un \textbf{notebook} (archivo \codigo{.ipynb}) es un documento hecho de \textbf{celdas} que
+puedes ejecutar una a una. Hay dos tipos de celda: de \textbf{código} (Python que corre) y de
+\textbf{texto} (explicaciones en Markdown). Ejecutas una celda con \textbf{Shift + Enter}.
+\end{concepto}
+
+La gracia: pruebas, ves el resultado justo debajo, cambias algo y vuelves a correr --- sin
+reiniciar todo el programa. Por eso es \textbf{la} herramienta de exploración en data science
+y ciencia de datos. Además, un notebook bien hecho es una pieza excelente de portafolio:
+cuenta una historia (texto + código + resultados) que cualquiera puede seguir.
+
+\section{Tu cuaderno: \codigo{4\_Notebooks/01\_buscador\_semantico.ipynb}}
+
+Envuelve la función \codigo{most\_similar()} en una interfaz cómoda:
+\begin{enumerate}
+  \item Una celda de \textbf{preparación} carga los 126 papers y sus vectores.
+  \item Una celda de \textbf{consulta} donde cambias la variable \codigo{my\_query} por la
+        frase que quieras y ejecutas.
+  \item El resultado aparece como \textbf{tabla} (score, título, año, citas), porque
+        \codigo{most\_similar} devuelve un DataFrame y Jupyter los dibuja bonitos.
+\end{enumerate}
+
+\begin{practica}
+Ábrelo tú y valida como experto. En PowerShell, dentro de la carpeta del proyecto:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m jupyter notebook "4\_Notebooks\textbackslash 01\_buscador\_semantico.ipynb"}
+\end{enumerate}
+Se abre en tu navegador. Ejecuta las celdas con Shift+Enter, cambia \codigo{my\_query} y
+prueba frases de tu campo. \textbf{Tú juzgas} si los papers que salen son los correctos: esa
+es la validación que cierra la Fase 2.
+\end{practica}
+
+\begin{ojo}
+El notebook empieza con \codigo{sys.path.insert(...)} apuntando a la carpeta del proyecto.
+Es para que Python encuentre el paquete \codigo{froth} aunque el cuaderno viva en la subcarpeta
+\codigo{4\_Notebooks/}. Sin esa línea, \codigo{from froth import embed} fallaría.
+\end{ojo}
+
+\section{Notebook vs.\ código (\codigo{.py}): ¿cuándo cada uno?}
+
+\begin{center}
+\begin{tabular}{p{6.5cm} p{6.5cm}}
+\textbf{Notebook (\codigo{.ipynb})} & \textbf{Módulo (\codigo{.py})} \\
+\hline
+Explorar, probar ideas, enseñar, presentar resultados. & Código estable que se reutiliza
+(el ``motor'', como \codigo{embed.py}). \\
+Se lee de arriba a abajo como una historia. & Se importa desde otros archivos. \\
+\end{tabular}
+\end{center}
+Regla sana: exploras en el notebook; cuando algo funciona y lo vas a reutilizar, lo mueves a
+un \codigo{.py} del paquete. Tu buscador ya vive en \codigo{embed.py}; el notebook solo lo
+\emph{usa}.
+
+\begin{resumen}
+Un notebook es un documento de celdas ejecutables (Shift+Enter) ideal para explorar y
+presentar. El tuyo envuelve \codigo{most\_similar} para que escribas consultas y veas los
+papers en tabla: úsalo para validar la Fase 2 con tu criterio de experto.
+\end{resumen}
+
+\end{document}

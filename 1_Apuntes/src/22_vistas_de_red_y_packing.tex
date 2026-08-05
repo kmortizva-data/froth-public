@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{22}{Las vistas finales: red con física y circle packing}
+
+\section{Tres vistas, tres preguntas}
+
+Tu app ahora tiene \textbf{cuatro pestañas}, y cada vista responde una pregunta distinta:
+
+\begin{center}
+\begin{tabular}{lp{5.2cm}p{4.6cm}}
+\textbf{Vista} & \textbf{Responde a...} & \textbf{Posición significa...} \\
+\hline
+Topic map (scatter) & ¿Qué grupos hay y qué tan cerca están? & Distancia semántica (UMAP) \\
+Network (red) & ¿Quién se conecta con quién? ¿Hubs? ¿Puentes? & La física acomoda; los enlaces son lo real \\
+Packed bubbles & ¿Cómo se reparte el campo? (presentar) & \textbf{Nada} — solo pertenencia y tamaño \\
+\end{tabular}
+\end{center}
+
+Saber \emph{qué significa la posición en cada vista} te salva de sobre-interpretar: en el
+scatter la cercanía ES información; en el packing es solo estética.
+
+\section{La red con física (pyvis)}
+
+\begin{concepto}{layout force-directed (dirigido por fuerzas)}
+La pestaña Network simula \textbf{física}: cada enlace es un \emph{resorte} que atrae a los
+papers conectados, y todos los nodos se \emph{repelen} un poco entre sí. El sistema se suelta
+y busca equilibrio solo: las comunidades muy conectadas quedan juntas y compactas, los
+puentes quedan estirados en medio. Por eso al \textbf{arrastrar un nodo} toda la red
+reacciona — esa es la ``animación'': no es decorado, es el equilibrio recalculándose.
+La librería: \codigo{pyvis} (envuelve vis.js, un motor JavaScript).
+\end{concepto}
+
+\section{El circle packing (circlify)}
+
+\begin{concepto}{empaquetado de círculos}
+La vista Packed bubbles coloca un \textbf{círculo grande por subtema} y dentro empaqueta un
+círculo por paper (área $=$ citas), \textbf{sin solapes}. Calcular dónde va cada círculo para
+que quepan apretados es un problema geométrico clásico; la librería \codigo{circlify} lo
+resuelve y nosotros solo dibujamos (con Plotly, para conservar el hover). Es la vista
+``de presentación'' — la del gráfico de packaging de la UE que inspiró el proyecto.
+\end{concepto}
+
+\begin{ojo}
+En el packing, dos papers vecinos NO son más parecidos que dos lejanos: la posición dentro
+del círculo la decide la geometría del empaquetado, no el significado. Membresía (qué círculo
+grande) y tamaño (citas) son la única información. Elegante para comunicar; no para analizar.
+\end{ojo}
+
+\section{Dónde vive todo}
+
+\begin{itemize}
+  \item \codigo{froth/visualize.py}: \codigo{network\_html()} (red pyvis autocontenida),
+        \codigo{packed\_figure()} (packing con circlify+Plotly), y sus versiones
+        \codigo{save\_*}/\codigo{plot\_*} que escriben HTML en \codigo{3\_Resultados/}.
+  \item \codigo{app.py}: pestañas \textbf{Network} y \textbf{Packed bubbles} nuevas. La red
+        se cachea por versión de datos (mismo truco del Apunte del slider).
+  \item Archivos compartibles: \codigo{topic\_map.html}, \codigo{paper\_network.html},
+        \codigo{packed\_bubbles.html} — doble clic y se abren en cualquier navegador.
+\end{itemize}
+
+\begin{resumen}
+Tres vistas para tres preguntas: scatter (distancias semánticas), red con física (conexiones,
+hubs, puentes — arrastrable porque es un sistema de resortes) y circle packing (presentación
+pura, posición sin significado). Todas en la app y como HTMLs compartibles.
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{25}{De la teoría al texto: find\_gaps() y el borrador de review}
+
+\section{Qué construimos (5.1 + 5.2)}
+
+Las dos mitades del diferenciador, ya funcionando en \codigo{froth/gaps.py}:
+\begin{enumerate}
+  \item \codigo{find\_gaps()}: convierte los 4 tipos del Apunte 24 en señales medidas
+        $\rightarrow$ tabla rankeada con evidencia (\codigo{2\_Datos/processed/gaps.parquet}).
+  \item \codigo{draft\_review()}: redacta el andamio del literature review
+        (\codigo{3\_Resultados/review\_draft.md}) con \textbf{citas 100\% trazables}.
+\end{enumerate}
+Se corren juntas: \codigo{python -m froth.gaps}.
+
+\section{Los gaps de TU corpus (resultados reales)}
+
+\begin{center}
+\begin{tabular}{lp{6.2cm}l}
+\textbf{Tipo} & \textbf{Candidato top} & \textbf{Evidencia} \\
+\hline
+Silo & commodities/críticos $\leftrightarrow$ flotación & sim 0.69, \textbf{1} cita cruzada \\
+Silo & flotación $\leftrightarrow$ geología (\emph{tu tesis}) & sim 0.70, 3 citas cruzadas \\
+Puente escaso & commodities $\leftrightarrow$ geología & solo 8 puentes pese a sim 0.67 \\
+Dormido & (ninguno: campo caliente, papers 2025-26) & la herramienta lo dice honesto \\
+\end{tabular}
+\end{center}
+
+Lectura fina del silo campeón: la literatura de \emph{criticidad/cadenas de suministro} y la
+de \emph{procesamiento} casi no se citan. Conectarlas (``mi flotación importa para la
+seguridad de suministro de Li/Ta'') es munición directa para introducciones y propuestas.
+
+\begin{ojo}
+La señal más débil es la \textbf{zona rala}: mide \emph{ausencias}, y un vacío no explica su
+porqué (¿mina o desierto?) — además de heredar las distorsiones del mapa 2D (Apunte 12). Por
+eso va etiquetada ``experimental'' en el código y en el draft. Regla general: desconfía más
+de las métricas sobre lo que falta que de las métricas sobre lo que existe.
+\end{ojo}
+
+\section{El borrador: por qué una plantilla y no un LLM}
+
+\begin{concepto}{citas trazables o nada}
+El draft se genera con una \textbf{plantilla determinista}: cada sección nace de la
+estructura MEDIDA (secciones $=$ clusters; imprescindibles $=$ más citados + hubs locales;
+novedades $=$ más recientes; huecos $=$ gaps con sus números) y cada afirmación apunta a
+papers reales con referencia numerada [n] $\rightarrow$ lista final con autor/año/título/DOI.
+Un LLM redactaría más bonito... y tarde o temprano \emph{inventaría} una referencia — el
+pecado capital académico. Orden correcto: primero el andamio confiable, después (opcional)
+un LLM que pula la prosa \emph{verificando} cada cita contra el corpus.
+\end{concepto}
+
+\section{Frente a la competencia (otro vecindario)}
+
+Aquí los rivales no son los mapeadores sino Elicit/SciSpace/Consensus (LLM que sintetiza
+\emph{sin} conocer la estructura del corpus), Scholarcy (resúmenes 1-a-1) y ChatGPT a pelo
+(referencias alucinadas). \textbf{Nadie une mapa y texto}: nuestro draft dice ``estos dos
+subtemas comparten 0.69 de similitud y una sola cita cruzada'' porque lo midió. Límite
+honesto: trabajamos con abstracts (Elicit extrae del full text) $\rightarrow$ lo nuestro es
+un \emph{andamio estructurado}, no prosa final.
+
+\begin{resumen}
+find\_gaps() produce candidatos rankeados con evidencia (silos al frente: commodities-
+flotación 0.69/1 cita; tu tesis reconfirmada 0.70/3); draft\_review() los convierte en un
+andamio de review con 26 referencias trazables, sin LLM. Nadie más une mapa y texto.
+\end{resumen}
+
+\end{document}

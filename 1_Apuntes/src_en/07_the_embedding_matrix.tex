@@ -1,0 +1,69 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{07}{Vectorising the 126 papers: the embedding matrix}
+
+\section{From one to all}
+
+In Note 06 we turned \emph{one} paper into its vector. Here we convert all \textbf{126 at
+once} and \textbf{save} the result to disk. That is the key difference: before we were only
+looking; now we produce data that the next phases will reuse.
+
+\begin{concepto}{matrix (N rows $\times$ M columns)}
+A vector is a row of numbers. Stack many vectors and you get a \textbf{matrix}: a table of
+numbers. Ours has shape \codigo{(126, 768)}:
+\begin{itemize}
+  \item \textbf{126 rows}: one per paper.
+  \item \textbf{768 columns}: the coordinates of each paper.
+\end{itemize}
+\emph{Row i} of the matrix is the vector of \emph{paper i} in the table: same order. That
+alignment is sacred, it is how we know which vector belongs to which paper.
+\end{concepto}
+
+\section{Batch processing: why it is faster}
+
+The code does not call the model 126 times (once per paper). It hands over the \textbf{whole
+list} of texts and the model processes them in \emph{batches} (you saw the
+\codigo{Batches: 4/4} bar).
+
+\begin{concepto}{batch}
+Processing in batches means giving many examples together so the model makes better use of
+the processor (it does the arithmetic in parallel). One by one would work, but it would be
+slower. Our 126 papers took $\sim$45 seconds on CPU; with a graphics card it would be faster
+still, but at this size there is no need.
+\end{concepto}
+
+\section{Saving to disk: the \codigo{.npy} file}
+
+Vectorising costs seconds; we do not want to repeat it every time. So we save the matrix in
+\codigo{2\_Datos/embeddings/vectors.npy}.
+
+\begin{concepto}{the .npy format (NumPy)}
+\codigo{.npy} is NumPy's own format for storing arrays and matrices of numbers as they are,
+without converting to text. It is written with \codigo{np.save()} and read back instantly
+with \codigo{np.load()}. Our 126$\times$768 matrix weighs barely $\sim$378 KB. The next
+phases (reduce to 2D, cluster) will read this file instead of recomputing.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Golden rule of the pipeline:} each phase leaves its result saved and the next one
+reads it. Papers $\rightarrow$ \codigo{papers.parquet}; vectors $\rightarrow$
+\codigo{vectors.npy}. If something breaks further down the line, you do not have to download
+papers again or recompute embeddings: you pick up from the last saved file.
+\end{ojo}
+
+\section{What got built}
+
+\begin{itemize}
+  \item The \codigo{embed\_papers(df)} function in \codigo{froth/embed.py} (no longer empty).
+  \item The file \codigo{2\_Datos/embeddings/vectors.npy} with the 126$\times$768 matrix.
+  \item The \codigo{save\_embeddings()} and \codigo{load\_embeddings()} helpers for the
+        phases to come.
+\end{itemize}
+
+\begin{resumen}
+We stacked the 126 vectors into a matrix (126$\times$768), computed it in batches (fast) and
+saved it in \codigo{vectors.npy} so it is not recomputed; row i is always paper i.
+\end{resumen}
+
+\end{document}

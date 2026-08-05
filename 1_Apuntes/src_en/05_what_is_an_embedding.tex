@@ -1,0 +1,116 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{05}{What an embedding is (the heart of the project)}
+
+\section{The problem: the computer does not understand words}
+
+You, as an expert, know these two phrases talk about the same thing:
+\begin{itemize}
+  \item ``\emph{fine particle flotation}''
+  \item ``\emph{recovery of small mineral grains by froth}''
+\end{itemize}
+But they share almost no words. If we searched for ``matching words'', the system would say
+they have nothing to do with each other. And the other way round: ``river bank'' and ``bank
+account'' share the word ``bank'' and are not alike at all.
+
+\textbf{Conclusion:} counting equal words does not capture \emph{meaning}. We need something
+else.
+
+\section{The solution: turn the text into a point on a map}
+
+\begin{concepto}{embedding (meaning vector)}
+An \textbf{embedding} is a text turned into a list of numbers, its \emph{coordinates}, so
+that it can be placed as a \textbf{point} on a ``map of meaning''. The list of numbers is
+also called a \textbf{vector}.
+
+The magic property: the map is built so that \textbf{texts with similar meaning land close
+together}, and different ones far apart. Two papers studying the same thing fall together
+even if they use different words.
+\end{concepto}
+
+Picture the meaning map of your papers (here in 2D so it can be drawn):
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+  % flotation area
+  \fill[litblue!15] (1.2,1.2) ellipse (1.5 and 1.1);
+  \node[litblue] at (1.2,2.6) {\small\textbf{fines flotation}};
+  \filldraw[litblue] (0.6,1.0) circle (2pt);
+  \filldraw[litblue] (1.4,1.5) circle (2pt);
+  \filldraw[litblue] (1.9,0.9) circle (2pt);
+  \filldraw[litblue] (1.0,1.7) circle (2pt);
+  % by-products area
+  \fill[litgreen!15] (6.0,1.4) ellipse (1.4 and 1.0);
+  \node[litgreen] at (6.0,2.7) {\small\textbf{Ta/Nb/Be recovery}};
+  \filldraw[litgreen] (5.6,1.2) circle (2pt);
+  \filldraw[litgreen] (6.3,1.6) circle (2pt);
+  \filldraw[litgreen] (6.1,1.0) circle (2pt);
+  % off-topic outlier
+  \filldraw[litorange] (3.6,4.2) circle (2pt);
+  \node[litorange] at (3.6,4.6) {\small telecommunications paper (noise)};
+  % axes without numbers
+  \draw[->,gray] (-0.3,-0.3) -- (8,-0.3);
+  \draw[->,gray] (-0.3,-0.3) -- (-0.3,5);
+\end{tikzpicture}
+\end{center}
+
+Each point is a paper. The flotation ones group on the left; the by-product ones on the
+right; and the off-topic paper that slipped in (remember the telecommunications one?) sits
+\emph{alone, far from everything}, which is why the system will later be able to set it aside
+automatically.
+
+\section{Why 768 coordinates and not 2?}
+
+\begin{concepto}{dimensions}
+On a real map you use \textbf{2} coordinates: latitude and longitude. But meaning is much
+richer than a position on a plane, so more ``room'' is needed. The model we will use
+(SPECTER) describes each text with \textbf{$\sim$768 coordinates}.
+
+You cannot draw that (nobody sees in 768 dimensions), but it does not matter: the
+\textbf{mathematics} can still measure how close two points are even with 768 coordinates. In
+Note 06 we will see how (``cosine similarity''). In Phase 3 we will flatten those 768 down to
+2 precisely so we can draw the real map.
+\end{concepto}
+
+Each of those 768 numbers captures some abstract ``aspect'' of the text. They are not
+interpretable one by one (number 348 does not mean ``how much it talks about lithium''); what
+matters is the \emph{whole pattern} of the 768 together.
+
+\section{Where do the numbers come from? A pretrained model}
+
+\begin{concepto}{pretrained model}
+The 768 numbers are produced by \textbf{SPECTER}: a \emph{neural network} that the AllenAI
+organisation already trained by reading millions of scientific papers (and who cites whom).
+It learned to place similar texts close together.
+
+The key point: we \textbf{train nothing}. We download the finished model and use it, like
+someone using a calculator without manufacturing it. That is a \emph{pretrained model}, and
+it is the fastest and most powerful way to start in text ML.
+\end{concepto}
+
+\begin{ojo}
+Why SPECTER and not a generic model? Because it is trained \textbf{on papers}. A
+general-purpose model understands ordinary text; SPECTER understands academic language
+(methods, results, scientific jargon) far better for our case. A specialised tool for a
+specialised job.
+\end{ojo}
+
+\section{What we will do with this (what comes next)}
+
+\begin{enumerate}
+  \item Install the libraries that load SPECTER (next step).
+  \item Turn your 126 abstracts into 126 vectors (a $126 \times 768$ matrix).
+  \item Measure likeness with cosine similarity (Note 06).
+  \item Build the \textbf{semantic search engine}: you type a phrase $\rightarrow$ it gives
+        you the 5 papers closest in meaning. (The ``wow'' moment.)
+\end{enumerate}
+
+\begin{resumen}
+An embedding turns each text into a point (768 coordinates) inside a ``map of meaning'' where
+alike lands close; those numbers come from SPECTER, a model already trained on papers that we
+merely reuse.
+\end{resumen}
+
+\end{document}

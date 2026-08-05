@@ -1,0 +1,70 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{22}{The final views: physics network and circle packing}
+
+\section{Three views, three questions}
+
+Your app now has \textbf{four tabs}, and each view answers a different question:
+
+\begin{center}
+\begin{tabular}{lp{5.2cm}p{4.6cm}}
+\textbf{View} & \textbf{Answers...} & \textbf{Position means...} \\
+\hline
+Topic map (scatter) & What groups are there and how close are they? & Semantic distance (UMAP) \\
+Network & Who connects with whom? Hubs? Bridges? & The physics arranges it; the links are what is real \\
+Packed bubbles & How is the field divided up? (presenting) & \textbf{Nothing}, only membership and size \\
+\end{tabular}
+\end{center}
+
+Knowing \emph{what position means in each view} saves you from over-interpreting: in the
+scatter, closeness IS information; in the packing it is only aesthetics.
+
+\section{The physics network (pyvis)}
+
+\begin{concepto}{force-directed layout}
+The Network tab simulates \textbf{physics}: each link is a \emph{spring} pulling the connected
+papers together, and all the nodes \emph{repel} each other slightly. The system is let go and
+finds equilibrium by itself: heavily connected communities end up together and compact, and
+bridges are left stretched in the middle. That is why \textbf{dragging a node} makes the whole
+network react. The ``animation'' is not decoration, it is the equilibrium being recomputed.
+The library: \codigo{pyvis} (a wrapper around vis.js, a JavaScript engine).
+\end{concepto}
+
+\section{The circle packing (circlify)}
+
+\begin{concepto}{circle packing}
+The Packed bubbles view places one \textbf{big circle per subtopic} and packs one circle per
+paper inside it (area $=$ citations), \textbf{with no overlaps}. Working out where each circle
+goes so they fit tightly is a classic geometry problem; the \codigo{circlify} library solves it
+and we only draw (with Plotly, to keep the hover). It is the ``presentation'' view, the one
+like the EU packaging chart that inspired the project.
+\end{concepto}
+
+\begin{ojo}
+In the packing, two neighbouring papers are NOT more alike than two distant ones: position
+inside the circle is decided by the packing geometry, not by meaning. Membership (which big
+circle) and size (citations) are the only information. Elegant for communicating; not for
+analysing.
+\end{ojo}
+
+\section{Where it all lives}
+
+\begin{itemize}
+  \item \codigo{froth/visualize.py}: \codigo{network\_html()} (self-contained pyvis network),
+        \codigo{packed\_figure()} (packing with circlify $+$ Plotly), and their
+        \codigo{save\_*}/\codigo{plot\_*} versions that write HTML into
+        \codigo{3\_Resultados/}.
+  \item \codigo{app.py}: new \textbf{Network} and \textbf{Packed bubbles} tabs. The network is
+        cached by data version (the same trick as the slider note).
+  \item Shareable files: \codigo{topic\_map.html}, \codigo{paper\_network.html},
+        \codigo{packed\_bubbles.html}. Double click and they open in any browser.
+\end{itemize}
+
+\begin{resumen}
+Three views for three questions: scatter (semantic distances), physics network (connections,
+hubs, bridges, draggable because it is a system of springs) and circle packing (pure
+presentation, position without meaning). All in the app and as shareable HTML files.
+\end{resumen}
+
+\end{document}

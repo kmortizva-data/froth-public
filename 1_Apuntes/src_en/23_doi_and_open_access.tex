@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{23}{DOI, open access and the reading list}
+
+\section{The new feature: from ranking to reading}
+
+The search engine already ranked papers; now it also takes you to \textbf{read} them: each
+result carries two links, \textbf{DOI} (the paper's official page) and \textbf{open PDF} (the
+free PDF, when it exists). In your corpus: \textbf{85 of 126 papers (67\%) have an open access
+PDF} and 116 of 126 have a DOI.
+
+\begin{concepto}{DOI (Digital Object Identifier)}
+The \textbf{DOI} is a paper's permanent ``ID number'': \codigo{10.1016/j...}. The URL
+\codigo{https://doi.org/[DOI]} always leads to the publisher's official page, even if the
+journal changes website. It is the correct way to cite and to reach the text; if the paper is
+paywalled, that is where you use your university access.
+\end{concepto}
+
+\begin{concepto}{open access (OA)}
+A paper is \textbf{open access} when a legally free copy exists: in the journal itself, in
+repositories (arXiv, HAL...) or on the author's university page. OpenAlex tracks where that
+copy is and gives us the URL (\codigo{oa\_url}). We only asked for one more field in the
+pull's \codigo{select} (\codigo{open\_access}), one line of code, and the pipeline regenerated
+everything else by itself.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Linking yes, mass downloading no.} Froth gives you the LINK and you click it: the
+reading happens on your side, with your permissions. Downloading PDFs en masse from publishers
+violates their terms of use (a risk foreseen in the plan from day 1). The serious tools
+(Connected Papers and the like) do exactly this same thing: rank $+$ link.
+\end{ojo}
+
+\section{Bonus of the day: Streamlit's slow watchman}
+
+The app took a long time to start and the log filled up with \codigo{torchvision} warnings.
+Diagnosis: Streamlit's \emph{file watcher} (auto-reload when you edit code) tries to inspect
+the hundreds of \codigo{transformers} modules, one by one. Fix: turn it off in
+\codigo{.streamlit/config.toml} (\codigo{fileWatcherType = "none"}). Double lesson: (1) a noisy
+log is not always a fatal error, you have to read WHAT it says; (2) comfortable development
+tools sometimes cost performance.
+
+\begin{resumen}
+Every search result now links to the DOI (official page) and to the open access PDF when one
+exists (67\% of your corpus). We link, we do not mass download. And the app starts faster after
+turning off Streamlit's file watcher.
+\end{resumen}
+
+\end{document}

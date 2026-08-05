@@ -1,0 +1,73 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{37}{MMR: relevante pero distinto (y un objetivo que salió degenerado)}
+
+\section{El problema que quedaba}
+
+El centroide (apunte 35) tiene un defecto estructural: las frases que se parecen al
+centro se parecen ENTRE SÍ. En tu cluster de geología, las 3 mejores frases tenían
+similitud mutua de \textbf{0.945} --- un resumen diciendo lo mismo tres veces.
+
+\begin{concepto}{Maximal Marginal Relevance (Carbonell \& Goldstein, 1998)}
+Selección voraz, una frase a la vez. Cada candidata se puntúa como
+\[
+\lambda \cdot \mathrm{relevancia} \;-\; (1-\lambda) \cdot \mathrm{redundancia}
+\]
+donde redundancia = su similitud máxima con lo YA elegido. Con $\lambda = 1$ vuelves al
+centroide puro; bajando $\lambda$ compras diversidad pagando relevancia. La primera
+elegida siempre es la más relevante (no hay nada elegido aún con qué ser redundante).
+\end{concepto}
+
+\section{El tropiezo (que enseña más que el acierto)}
+
+Primer intento de elegir $\lambda$ con datos: ``maximizar relevancia $-$ redundancia''.
+Resultado: recomendó $\lambda = 0.5$... el BORDE de la grilla. Ese objetivo es
+\textbf{degenerado}: bajar $\lambda$ SIEMPRE reduce la redundancia más rápido de lo que
+pierde relevancia, así que el ``óptimo'' se escapa hacia abajo indefinidamente. Un
+recomendador que siempre elige el extremo no está midiendo nada.
+
+\section{La regla que sí funciona}
+
+Mirando tu barrida real (corpus Beauvoir, 12 clusters):
+
+\begin{center}
+\begin{tabular}{cccc}
+$\lambda$ & relevancia & redundancia \\
+\hline
+0.5 & 0.868 & 0.758 \\
+0.6 & 0.906 & 0.829 \\
+\textbf{0.7} & \textbf{0.918} & \textbf{0.860} \\
+0.8 & 0.921 & 0.873 \\
+1.0 & 0.923 & 0.884 \\
+\end{tabular}
+\end{center}
+
+De 1.0 a 0.7 la relevancia casi no cae ($-0.5\%$) y la diversidad llega gratis; de 0.7
+hacia abajo empiezas a pagar de verdad. Regla adoptada (interpretable): \textbf{el
+$\lambda$ más diverso que conserve $\geq 99\%$ de la relevancia alcanzable}. Tu corpus
+votó $\lambda = 0.7$ solo --- y coincide con el default de la literatura, pero ahora
+SABEMOS por qué vale para estos datos (regla 9 del proyecto).
+
+\begin{practica}
+\texttt{.venv\textbackslash Scripts\textbackslash python.exe -m froth.review} ---
+al final imprime la barrida y el antes/después del cluster más redundante: el centroide
+da 3 frases clónicas de pegmatitas; MMR mantiene la definición y añade granitos Nb-Ta y
+el Erzgebirge. Tres ángulos, no un eco.
+\end{practica}
+
+\begin{ojo}
+MMR es voraz: elige lo mejor AHORA sin mirar adelante, porque el óptimo exacto es
+combinatorio (probar todas las combinaciones de frases). Para resúmenes de 3-5 frases,
+la aproximación voraz es el estándar y sobra.
+\end{ojo}
+
+\begin{resumen}
+MMR = $\lambda \cdot$relevancia $-$ $(1-\lambda) \cdot$redundancia, selección voraz.
+El primer objetivo para elegir $\lambda$ salió degenerado (se clavó al borde); la regla
+final --- máxima diversidad conservando el 99\% de la relevancia --- eligió 0.7 con tus
+datos. Con esto están las 3 piezas del ranking: típico (centroide), respaldado
+(TextRank) y diverso (MMR). Sigue ensamblar el draft v2 (7.4).
+\end{resumen}
+
+\end{document}

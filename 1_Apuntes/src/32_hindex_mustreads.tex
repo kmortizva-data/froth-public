@@ -1,0 +1,76 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{32}{h-index por cluster: cuántos papers son ``imperdibles''}
+
+\section{El problema (tu propia orden anti-números-mágicos)}
+
+En la guía de lectura queríamos marcar los must-reads de cada subtópico. ¿Top 3? No:
+``top 3'' es un número mágico — igual de arbitrario para un cluster de 110 papers de
+geología que para uno de 9 de tomografía. Pediste \emph{investigar cómo investigar}:
+un umbral calculado \textbf{por corpus y por cluster}.
+
+\section{La idea robada de la bibliometría: el h-index}
+
+El h-index se inventó para medir investigadores, pero la definición funciona sobre
+CUALQUIER lista de conteos de citas:
+
+\begin{concepto}{h-index de un cluster}
+El mayor $h$ tal que el cluster tiene $h$ papers con al menos $h$ citas cada uno.
+Ordenas por citas descendentes y buscas el punto donde el rango supera a las citas:
+justo ahí la evidencia deja de sostenerse a sí misma.
+\end{concepto}
+
+Por qué es elegante: \textbf{el propio cluster fija su vara}. Un cluster mega-citado
+exige cientos de citas para entrar al must-read; uno joven se conforma con decenas.
+Cero parámetros que tunear.
+
+\section{Los datos reales de Beauvoir}
+
+\begin{itemize}
+  \item Geología/granitos (110 papers) $\rightarrow$ $h = 35$: literatura madura, la
+        vara quedó altísima sola.
+  \item Tomografía XCT (9 papers) $\rightarrow$ $h = 3$: nicho joven, vara proporcional.
+  \item Informes USGS (mayoría con 0--2 citas) $\rightarrow$ el h-index degenera
+        ($h > n/2$, marcaría ``casi todo es imperdible''): ahí entra el \textbf{fallback
+        head/tail breaks} — se corta en la media de citas del cluster, que en
+        distribuciones de cola larga separa la cabeza pesada del resto ($\rightarrow$ 7).
+\end{itemize}
+
+\begin{ojo}
+Citas $\neq$ calidad: miden atención acumulada, castigan lo reciente (los 59 papers de
+2025--2027 con 0 citas son investigación fresca, no mala). El must-read dice ``esto es
+lo canónico que el campo espera que hayas leído'', no ``esto es lo único que vale''.
+\end{ojo}
+
+\section{Dónde vive esta regla (y una lección de 2026-08-03)}
+
+Hasta hoy este apunte describía un fallback que \textbf{nunca se había programado}: el
+h-index sí estaba en el código, el corte por la media no. Se implementó al construir el
+export a Obsidian, en \codigo{froth/export\_obsidian.py} (\codigo{\_must\_reads} y
+\codigo{\_mean\_cut}).
+
+\begin{ojo}
+\textbf{Un desvío pequeño rompió la regla entera.} Al programarlo, Claude repitió el corte
+por la media \emph{hasta seis veces} en vez de hacerlo UNA, creyendo que así sería más
+selectivo. Efecto medido sobre tu corpus de tesis: en el subtema de 340 papers hay un
+clásico con 4.250 citas que arrastra la media, y al repetir el corte la lista se
+estrangulaba hasta \textbf{1 paper}. Con un solo corte da 36. En total, la versión repetida
+dejaba con 2 papers o menos a \textbf{20 de los 29 subtemas de 30+ papers}; la regla de
+este apunte no lo hace en ninguno.
+
+Lección: cuando un apunte fija un método, el código debe seguirlo \emph{literalmente}.
+``Lo hago un poco más estricto'' no es una mejora, es otro método, y hay que medirlo
+antes de llamarlo mejor.
+\end{ojo}
+
+Números actuales con la regla correcta: corpus de tesis, 3.867 papers en 104 subtemas
+$\rightarrow$ 893 must-reads (mediana 6 por subtema, ninguno se queda corto).
+
+\begin{resumen}
+Must-reads sin números mágicos: h-index por cluster (auto-calibrado a la madurez de cada
+subtópico) con fallback head/tail breaks cuando las citas son demasiado planas para que
+el h-index discrimine.
+\end{resumen}
+
+\end{document}

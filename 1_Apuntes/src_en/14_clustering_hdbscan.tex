@@ -1,0 +1,76 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{14}{Clustering: letting the algorithm find the groups (HDBSCAN)}
+
+\section{The problem}
+
+Your 2D map (Note 13) shows clouds to the naked eye, but ``to the naked eye'' is not a method:
+we need an algorithm to delimit the groups objectively and repeatably. That is
+\textbf{unsupervised clustering}: grouping without anyone saying what each group is or how
+many there are.
+
+\section{The classic intuition: K-means (and its two traps)}
+
+\begin{concepto}{K-means}
+The most famous method. You tell it ``I want \textbf{K} groups'' and it splits the points into
+K compact groups. Simple and fast, but with two traps for our case:
+\begin{enumerate}
+  \item \textbf{You have to guess K.} How many subtopics does your topic have? That is exactly
+        what we do NOT know (it is what we want to discover).
+  \item \textbf{It forces EVERY point into some group.} The poetry paper would end up assigned
+        to a flotation cluster, contaminating it.
+\end{enumerate}
+\end{concepto}
+
+\section{What we use: HDBSCAN, density-based clustering}
+
+\begin{concepto}{HDBSCAN}
+Instead of splitting, HDBSCAN looks for \textbf{dense zones}: regions where many points sit
+tightly together. Each dense zone $=$ one cluster. Consequences:
+\begin{itemize}
+  \item \textbf{It decides by itself how many groups there are} (we do not guess K).
+  \item Whatever belongs to no dense zone is left as \textbf{noise} (label $-1$), instead of
+        contaminating a group.
+  \item Its main parameter is \codigo{min\_cluster\_size}: the minimum number of points needed
+        for something to count as a group (in Froth: \codigo{MIN\_CLUSTER\_SIZE = 8}).
+\end{itemize}
+\end{concepto}
+
+\section{What happened with YOUR papers (the real story)}
+
+With \codigo{min\_cluster\_size=8}, HDBSCAN found \textbf{3 clusters $+$ 9 noise papers}
+(and with 5, almost identical: a \emph{stable} result, a good sign):
+
+\begin{center}
+\begin{tabular}{llp{6.6cm}}
+\textbf{Group} & \textbf{Size} & \textbf{What it turned out to be (Note 15)} \\
+\hline
+Cluster 0 & 49 & Geology of pegmatites and rare-metal granites \\
+Cluster 2 & 43 & Lepidolite flotation (the heart of the thesis) \\
+Cluster 1 & 25 & ``Drawer of other people's things'': lithium recycling/economy $+$ the off-topic ones \\
+Noise & 9 & Generalist bridges and oddities \\
+\end{tabular}
+\end{center}
+
+\begin{ojo}
+\textbf{Two surprises that teach a lot:}
+\begin{enumerate}
+  \item \textbf{``Noise'' is not always rubbish.} Two entirely on-topic classics landed in the
+        noise (for example \emph{The Effect of Bubble Size on Fine Particle Flotation}, 527
+        citations). Why? They are \emph{generalist} papers that speak to several subtopics at
+        once: they live ``between'' the clouds, without fully belonging to any.
+  \item \textbf{The off-topic ones were not noise: they were quarantined together.} The
+        telecommunications paper, the poetry one and the history one all three fell inside
+        cluster 1. ``Not being on topic'' is also something in common, and it forms its own
+        cloud far from the mining ones.
+\end{enumerate}
+\end{ojo}
+
+\begin{resumen}
+K-means demands that you guess K and forces everyone in; HDBSCAN groups by density, decides by
+itself how many groups there are and sets the noise aside. On your data: 3 stable subtopics
+$+$ 9 noise papers, with the off-topic ones quarantined inside their own cluster.
+\end{resumen}
+
+\end{document}

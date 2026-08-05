@@ -1,0 +1,82 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{29}{Fase 6: generalizar no es entrenar (y el motor multi-topic)}
+
+\section{La aclaración que abre la fase}
+
+El plan de Batman: ``iterar cada uno de los 22 títulos del cohorte y seguir entrenando''.
+Correcto en espíritu — pero son \textbf{dos actos distintos}:
+
+\begin{concepto}{generalizar (6.1--6.3) vs.\ entrenar (6.5)}
+\begin{itemize}
+  \item \textbf{Iterar los 22 títulos NO entrena nada}: el modelo (SPECTER) no cambia ni un
+        peso. Lo que se endurece es el \textbf{código} — cada título raro que rompe algo
+        obliga a arreglarlo. Es la escalera 1$\rightarrow$2$\rightarrow$22 del plan original.
+  \item \textbf{Entrenar de verdad} (6.5) sí cambia los pesos del modelo: fine-tuning de
+        SPECTER con los miles de abstracts acumulados de los 22 corpus. PyTorch, loss,
+        épocas — en la GPU de Batman (RTX 5060, confirmada capaz).
+\end{itemize}
+Los dos actos se alimentan: la generalización produce el dataset del entrenamiento.
+\end{concepto}
+
+\section{El motor multi-topic (6.1)}
+
+Hasta ayer el topic vivía \emph{clavado} en \codigo{config.py}. Ahora:
+
+\begin{concepto}{config.set\_topic(título)}
+Una llamada re-apunta TODO el motor: deriva términos de búsqueda nuevos y mueve las rutas de
+datos a una carpeta propia (\codigo{2\_Datos/topics/<slug>/}). Funciona porque cada módulo
+lee \codigo{config.*} \emph{en el momento de ejecutar}, no al importar — un detalle de
+diseño que pagó dividendos. (Trampa clásica cazada: \codigo{def f(x=config.TOPIC)} congela
+el valor al importar; se corrigió a \codigo{x=None} + resolver adentro.)
+\end{concepto}
+
+\begin{concepto}{derive\_search\_terms(): de título a búsquedas}
+Los términos del topic 1 se escribieron a mano. Para CUALQUIER título, la heurística de
+\codigo{froth/terms.py}: quita palabras de relleno (``innovative approaches for the...''),
+conserva \textbf{frases reales del título} (bigramas/trigramas consecutivos: \emph{froth
+flotation}, \emph{scheelite ores}, \emph{Quantitative XRD}), respeta \textbf{acrónimos}
+(XRD, LIBS, NiMH) y extrae el \textbf{contenido de paréntesis} (ahí viven los elementos y
+yacimientos). Determinista, sin dependencias. La capa LLM local (Ollama) vendrá encima como
+refinador opcional — decisión ya tomada: local, privado, gratis.
+\end{concepto}
+
+\section{El hito 1\texorpdfstring{$\rightarrow$}{->}2 (probado)}
+
+Pipeline completo sobre \emph{``scheelite ores by froth flotation''} \textbf{sin tocar
+código}: 47 papers, carpeta propia, y clusters con sentido metalúrgico (concentrador
+Falcon, reactivos SNF, espumantes). Y la prueba pagó de inmediato:
+
+\begin{ojo}
+\textbf{Lo que el 2º topic enseñó} (por esto existe la escalera):
+\begin{enumerate}
+  \item La keyword ``nbsp'' delató que los abstracts de Crossref traen \textbf{entidades
+        HTML} ($\&$nbsp;) — el limpiador ahora hace \codigo{html.unescape}.
+  \item El \codigo{.gitignore} no cubría las carpetas nuevas por topic — los datos casi
+        acaban en GitHub.
+  \item En corpus chicos (47 papers) la granularidad fija de 8 deja demasiado ruido
+        $\rightarrow$ el pipeline ahora acepta \codigo{min\_cluster\_size="auto"} (elige
+        por DBCV, Apunte 27, por corpus).
+\end{enumerate}
+Tres arreglos reales con UN solo título nuevo. Los 22 del batch encontrarán más — ese es
+exactamente su trabajo.
+\end{ojo}
+
+\section{El desfile (6.2)}
+
+\codigo{froth/batch.py} lee los 22 títulos del CSV del cohorte y corre el pipeline para
+cada uno, con reporte de robustez por topic (papers, relevantes, clusters, ruido,
+granularidad elegida, segundos, estado). Diseño defensivo: el reporte se guarda tras
+\textbf{cada} topic y las corridas siguientes \textbf{reanudan} donde quedaron (un
+rate-limit no pierde nada). Los fallos no detienen el desfile: quedan como FAILED en la
+tabla — y esa tabla es la agenda de arreglos de la 6.3.
+
+\begin{resumen}
+Iterar títulos endurece el código (generalizar); cambiar pesos es entrenar (6.5). El motor
+ya es multi-topic (set\_topic + términos derivados + carpetas por topic), probado con
+scheelite ores — que de paso regaló 3 arreglos. El batch de 22 corre con reanudación y
+reporte por topic: su tabla de fallos es el plan de trabajo de la 6.3.
+\end{resumen}
+
+\end{document}

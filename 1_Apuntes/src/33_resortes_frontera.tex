@@ -1,0 +1,57 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{33}{Resortes calibrados y papers frontera: qué significa la posición en la red}
+
+\section{Tu pregunta: ``¿los resortes significan algo?''}
+
+En la vista Network los nodos se acomodan con un \textbf{force layout} (forceAtlas2):
+cada arista es un resorte que junta, y todos los nodos se repelen como cargas. El
+equilibrio de ese tira-y-afloja decide la posición. Por defecto vis.js usa la MISMA
+longitud de resorte para toda arista — la distancia visual era pura estética.
+
+\section{La calibración: longitud = disimilitud}
+
+Nuestras aristas ya traen un peso $w$ = similitud coseno (con umbral 0.75). Ahora cada
+resorte se fabrica a medida:
+\[
+\mathrm{length} = 60 + 420\,(1 - w)
+\]
+Vecinos casi idénticos ($w \to 1$) quedan a $\sim$60 px; los que apenas pasaron el
+umbral, a $\sim$165 px. Desde ese cambio, \textbf{cerca en pantalla $\approx$ cerca en
+significado} — la red responde la misma pregunta que el mapa UMAP, pero con las
+conexiones explícitas.
+
+\section{El misterio del ``amarillo pegado al hub azul''}
+
+Notaste nodos de un color metidos en el territorio de otro. No era bug: eran
+\textbf{papers frontera}. La cadena de eventos:
+
+\begin{enumerate}
+  \item HDBSCAN corta los clusters en el mapa \textbf{2D} de UMAP.
+  \item La red conecta vecinos en los \textbf{768D} originales.
+  \item Un paper puede caer del lado amarillo del corte 2D pero tener a casi todos sus
+        vecinos semánticos en el cluster azul $\rightarrow$ los resortes lo arrastran
+        hacia el azul.
+\end{enumerate}
+
+\begin{concepto}{detección de papers frontera}
+Para cada nodo se cuenta el cluster de sus vecinos. Si $\geq 60\%$ pertenece a OTRO
+cluster, es frontera: se dibuja con \textbf{anillo discontinuo del color del cluster
+vecino} y el tooltip lo declara (``bridges into the neighboring subtopic''). En
+Beauvoir: 3 de 237 papers.
+\end{concepto}
+
+\begin{ojo}
+Los papers frontera no son errores de clustering: suelen ser los interdisciplinarios —
+exactamente los que conectan subtópicos. Para un lector buscando huecos de
+investigación, son de los más interesantes del mapa.
+\end{ojo}
+
+\begin{resumen}
+Resortes con length $= 60 + 420(1-w)$: la proximidad visual ahora ES distancia
+semántica. Los nodos ``mal ubicados'' son papers frontera (mayoría de vecinos en otro
+cluster), ahora marcados con anillo discontinuo del color vecino.
+\end{resumen}
+
+\end{document}

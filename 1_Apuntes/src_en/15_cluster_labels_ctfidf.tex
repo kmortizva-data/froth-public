@@ -1,0 +1,67 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{15}{Naming the bubbles: c-TF-IDF}
+
+\section{The problem}
+
+HDBSCAN gives you groups called ``0'', ``1'', ``2''. For the map we need names with meaning.
+How do you name a group of 49 papers \emph{automatically}?
+
+\section{Why the most frequent words do NOT work}
+
+If you take the most repeated words in each cluster, the same ones come out in ALL of them:
+``mineral'', ``flotation'', ``study'', ``results''. Frequent $\neq$ characteristic. What
+distinguishes a group are the words it uses a lot \textbf{and the others use little}.
+
+\begin{concepto}{TF-IDF and its class-based version (c-TF-IDF)}
+\textbf{TF-IDF} scores each word by combining two factors: how frequent it is in a document
+(TF) and how \emph{rare} it is in the rest (IDF). Frequent here $+$ rare elsewhere $=$ high
+score $=$ characteristic.
+
+The \textbf{c-TF-IDF} (class-based) variant applies this to clusters: all the abstracts of
+each cluster are glued together as if they were \textbf{a single mega-document}, and the
+mega-documents are compared against each other. The top words of each mega-document are the
+cluster's label. It is the same trick BERTopic uses inside.
+\end{concepto}
+
+\section{What came out with YOUR clusters}
+
+\begin{center}
+\begin{tabular}{lp{5.2cm}p{5.2cm}}
+\textbf{Group} & \textbf{Keywords (top c-TF-IDF)} & \textbf{Reading} \\
+\hline
+Cluster 0 (49) & melt, crystallization, Nb, Zr, Hf & Geology/petrology of pegmatites and
+rare-metal granites \\
+Cluster 2 (43) & flotation, collector, froth, lepidolite & Lepidolite flotation:
+collectors and froths \\
+Cluster 1 (25) & commodity, old scrap, USGS, women, men & Lithium economy/recycling $+$ the
+off-topic papers (quarantine) \\
+\end{tabular}
+\end{center}
+
+The map makes complete mineralogical sense: on one side the geology of the deposit, on the
+other the processing (flotation), and separately ``the rest of the world''.
+
+\begin{ojo}
+\textbf{A data quality finding:} among the flotation cluster's keywords, some \emph{French}
+words slipped in (``du'', ``récupération''). Cause: the corpus contains French abstracts
+(Beauvoir is in France!) and our \emph{stopword} list (empty words that get ignored: the, of,
+and...) only covers English. It breaks nothing, but it dirties the labels. Possible fixes:
+multilingual stopwords, or detecting the language during the Phase 1 cleanup. Lesson: real
+data always brings one more surprise.
+\end{ojo}
+
+\begin{concepto}{the algorithm proposes, the expert validates}
+Automatic labels are a \emph{draft}: ``melt-crystallization-Nb'' is useful, but you as the
+expert will refine it into ``Petrogenesis of rare-metal granites''. That division of labour
+(machine proposes, human curates) is exactly how these tools are used in serious research.
+\end{concepto}
+
+\begin{resumen}
+c-TF-IDF names each cluster with its characteristic words (frequent inside, rare outside), by
+gluing each cluster into a mega-document. Your 3 subtopics: pegmatite geology, lepidolite
+flotation, and economy/recycling (with the off-topic ones in quarantine).
+\end{resumen}
+
+\end{document}

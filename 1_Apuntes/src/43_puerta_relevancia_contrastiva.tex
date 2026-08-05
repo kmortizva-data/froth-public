@@ -1,0 +1,123 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{43}{La puerta de relevancia: separar el grano de la paja en 190.000 papers}
+
+\section{Glosario en palabras simples (léelo primero)}
+
+\begin{itemize}
+  \item \textbf{Vector}: la ``huella digital'' numérica de un paper --- una lista de 768
+        números que captura su significado. Papers que hablan de lo mismo tienen huellas
+        parecidas (apunte 05).
+  \item \textbf{Coseno}: el medidor de parecido entre dos huellas. Va de $-1$ a $1$:
+        cerca de $1$ = hablan de lo mismo; cerca de $0$ = nada que ver.
+  \item \textbf{Centroide}: el ``promedio'' de un grupo de vectores --- su centro de
+        gravedad, como la ley media de un lote de mineral.
+  \item \textbf{Umbral}: el valor de corte. Encima: el paper entra al mapa. Debajo: fuera.
+  \item \textbf{Bimodal}: distribución con DOS jorobas. Si los buenos hacen una y los
+        malos otra, el valle entre ambas es el corte natural.
+  \item \textbf{Hub / cluster}: grupo de papers muy parecidos entre sí --- un subtema.
+\end{itemize}
+
+\section{El problema que TÚ encontraste}
+
+Con la cosecha sin techo (190.000 papers), abriste el mapa de tailings y viste
+\emph{``cosas hasta de recursos humanos, en colores''}. Tu hipótesis fue exacta: ninguna
+palabra falló al vectorizarse --- falló \textbf{la puerta} que decide qué entra al mapa.
+
+La puerta vieja: relevancia $= \cos(\mbox{paper},\ \mbox{TÍTULO del topic})$, con
+umbral fijo 0.55. Medido en tailings: aceptaba el \textbf{93\%} de 16.681 papers,
+incluyendo clamidiosis en koalas (por ``iron'' biológico), ``event management'' (por
+``management'') y ``Circular Economy in SMEs'' (por ``circular economy''). Una frase
+corta con imanes genéricos no puede distinguir facetas. Además, el techo viejo de 25
+resultados por término era un filtro de precisión ACCIDENTAL: al quitarlo (decisión
+correcta: cobertura es la misión), entró la cola profunda de cada término.
+
+\section{Mini-ejemplo de juguete (haz las cuentas conmigo)}
+
+Huellas de solo 2 números (en vez de 768). El título apunta a $T=(1,\ 0)$. Tres papers:
+
+\begin{center}
+\begin{tabular}{lcc}
+ & vector & $\cos$ con el título \\
+\hline
+A: flotación de relaves & $(0.98,\ 0.20)$ & $0.98$ \\
+B: gestión de personal  & $(0.60,\ 0.80)$ & $0.60$ \\
+C: koalas               & $(0.50,\ 0.87)$ & $0.50$ \\
+\end{tabular}
+\end{center}
+
+Con umbral 0.55, ¡B entra al mapa! ($0.60 > 0.55$). Ese es tu hub de recursos humanos.
+
+La \textbf{puerta contrastiva} pregunta algo mejor: ¿te pareces a mi tema MÁS de lo que
+te pareces a lo genérico?
+\[
+v_2 = \cos(\mbox{paper},\ \mbox{núcleo}) - 0.4 \cdot \cos(\mbox{paper},\ \mbox{global})
+\]
+donde núcleo $\approx A$ (los papers más pegados al título) y global $=$ promedio de
+todos $\approx (0.74,\ 0.67)$ normalizado. Cuentas:
+\[
+v_2(A) = 1.00 - 0.4 \cdot 0.86 = \mathbf{0.66}
+\qquad
+v_2(B) = 0.75 - 0.4 \cdot 0.98 = \mathbf{0.36}
+\]
+B queda lejos de cualquier corte razonable. Con 768 números y 16.681 papers, esto mismo
+produjo una distribución \textbf{bimodal} con valle en $+0.399$ --- y el umbral se elige
+en ESE valle, por corpus (perilla calculada, no constante fósil).
+
+\begin{concepto}{la idea contrastiva}
+Es el mismo truco que arregló los títulos KeyBERT (apunte 40): premiar cercanía al
+núcleo Y castigar cercanía a la masa genérica. Lo genérico compartido deja de contar
+como mérito.
+\end{concepto}
+
+\section{Tropiezo 1: la puerta por-paper aplanó los mapas}
+
+La primera versión juzgaba paper por paper\ldots{} y tailings pasó de 115 subtemas a
+\textbf{2} (a CUALQUIER granularidad --- lo confirmó el barrido DBCV). ¿Por qué? Al
+quedarte solo con ``los parecidos al núcleo'', la población superviviente es una banda
+homogénea: una bola sin valles internos que HDBSCAN no puede subdividir. Ganamos
+precisión, destruimos la ESTRUCTURA --- que es la mitad del producto.
+
+El arreglo salió de tu propia frase (``un hub de RRHH, \emph{en colores}''): la basura
+llega en \textbf{hubs coherentes}, así que la puerta debe juzgar HUBS: (1) mapear TODO,
+(2) puntuar cada cluster por el $v_2$ promedio de sus miembros, (3) botar clusters
+enteros bajo el valle de esas medias, (4) el ruido suelto se juzga individual. Medido:
+los hubs de física de partículas, astronomía, RRHH y koalas murieron completos; el de
+morteros con relaves no perdió ni un paper; 325 subtemas del dominio intactos.
+
+\section{Tropiezo 2: tu doble ciego destapó un sesgo}
+
+Juzgaste 40 casos de frontera a ciegas: 62\% de acuerdo, pero con dirección --- rescataste
+11 papers que la máquina botaba, casi todos de \textbf{economía circular}\ldots{} que está
+EN el título de tu tesis. Causa: el centro global apunta en parte hacia el propio tema
+(el corpus está lleno de él), así que un paper alineado con el título recibía premio del
+núcleo Y castigo del global: doble penalización por su propia identidad. Arreglo:
+\textbf{proyectar fuera} del global la dirección del núcleo antes de castigar. Verificado:
+``Towards Circular Economy Metrics'' volvió; koalas y el paper del queso (``Iron
+Ages''\ldots{} de la Edad del Hierro, no del mineral) siguen fuera.
+
+Honestidad de cierre: re-medido tu acuerdo contra la puerta final, quedó en 60\% ---
+prácticamente igual. El fix ganó los casos que te importaban (los de economía circular),
+pero la frontera de $\pm0.04$ del valle es ambigua HASTA para el experto (tú dejaste
+pasar el queso por el ``Iron''). No se afina más: sería sobreajustar a 40 casos.
+
+\begin{ojo}
+El valor del gate está en el nivel de HUBS (basura coherente muere entera, estructura
+del dominio intacta), no en decorar el borde. Ninguna frontera unidimensional es
+perfecta; el flujo correcto es máquina propone $\to$ experto valida $\to$ la perilla se
+recalibra donde el experto tiene razón sistemática (economía circular sí, queso no).
+\end{ojo}
+
+\begin{resumen}
+Puerta vieja: $\cos$ con el título + umbral fijo = 93\% aceptado, koalas en colores.
+Puerta nueva: score contrastivo (núcleo vs.\ global SIN la dirección del tema) $\to$
+bimodal $\to$ valle POR corpus $\to$ juicio por HUBS para preservar estructura.
+Resultado: 22/22 topics limpios con su propio umbral, master de 77.636 papers únicos
+relevantes. Tres lecciones: (1) contrastar contra lo genérico separa lo que el parecido
+a secas no puede; (2) filtrar individuos puede destruir la estructura colectiva ---
+juzga al grupo cuando la señal es grupal; (3) el juez humano encuentra los sesgos que
+la métrica no ve --- y también tiene los suyos.
+\end{resumen}
+
+\end{document}

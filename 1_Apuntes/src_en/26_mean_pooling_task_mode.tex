@@ -1,0 +1,48 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{26}{Task mode from the inside: chunking and averaging (mean pooling)}
+
+\section{The problem you cannot see}
+
+Task mode accepts whole instruction PDFs. But SPECTER (like almost every embedding model) only
+``reads'' about \textbf{512 tokens} ($\approx$ 350 to 400 words): anything beyond that it
+\textbf{truncates silently}. If you gave it a 10-page PDF, the vector would represent... the
+first page. The rest, ignored with no warning. This kind of silent limit is a classic trap of
+language models.
+
+\section{The fix: chunk and average}
+
+\begin{concepto}{chunking $+$ mean pooling}
+\codigo{embed.embed\_texts\_mean()} does two steps:
+\begin{enumerate}
+  \item \textbf{Chunking}: it splits each text into pieces of $\sim$180 words (comfortably
+        below the limit).
+  \item \textbf{Mean pooling}: it vectorises each piece and computes the \textbf{average} of
+        all the vectors $\rightarrow$ a single vector representing the COMPLETE document.
+\end{enumerate}
+The geometric intuition: each piece is a point on the map of meaning; the average is the
+\emph{centre of gravity} of all of them, the mean position of what the document is about.
+\end{concepto}
+
+\begin{ojo}
+Averaging also \emph{dilutes}: if the PDF mixes very different topics, the centre of gravity
+falls ``between'' them and may not represent any of them well. For task instructions
+(thematically coherent) it works very well; for miscellany documents you would have to group
+the pieces by topic first. A known and accepted limitation.
+\end{ojo}
+
+\section{The real test}
+
+Simulated brief: \emph{``technical report comparing collectors for lepidolite flotation and
+their selectivity against feldspar and quartz gangue''} (repeated until it forced several
+chunks). Result: a top-5 of pure collector papers, headed by the LCJ collector one (similarity
+0.897). The centre of gravity landed exactly where it should.
+
+\begin{resumen}
+Embedding models truncate at $\sim$512 tokens silently; task mode dodges this by chunking the
+text and averaging the vectors (mean pooling $=$ the centre of gravity of the meaning). Tested:
+a collectors brief returns collector papers.
+\end{resumen}
+
+\end{document}

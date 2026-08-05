@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{36}{TextRank: PageRank sobre frases (el hub de las frases)}
+
+\section{La idea: reciclar el algoritmo de Google}
+
+PageRank ordenaba la web con una idea circular pero resoluble: \emph{una página importa
+si páginas importantes la enlazan}. TextRank (Mihalcea \& Tarau, 2004) cambia páginas por
+frases y enlaces por similitud: \emph{una frase importa si frases importantes se le
+parecen}. Es EXACTAMENTE tu concepto de hub de la Fase 4, aplicado dentro de cada cluster.
+
+\begin{concepto}{el grafo de frases y el paseo aleatorio}
+Nodos = las frases del cluster; peso de la arista = coseno entre sus vectores SPECTER.
+PageRank se calcula con \textbf{iteración de potencias}: imagina un lector saltando de
+frase en frase, prefiriendo saltos hacia frases similares; con probabilidad $1-d$
+($d=0.85$) se teletransporta a cualquiera. Tras iterar
+\[
+r \leftarrow \frac{1-d}{N} + d \, W r
+\]
+unas 50 veces, $r$ converge: el tiempo que el lector pasa en cada frase ES su importancia.
+En \texttt{froth/review.py} son 4 líneas de numpy --- sin librerías nuevas.
+\end{concepto}
+
+\section{Centroide vs TextRank: no miden lo mismo}
+
+\begin{itemize}
+  \item \textbf{Centroide} premia lo \emph{típico}: la frase más parecida al promedio.
+  \item \textbf{TextRank} premia lo \emph{respaldado}: la frase con más ``votos'' de
+        consenso, aunque el consenso venga de un subgrupo denso.
+\end{itemize}
+
+En tu corpus (¡corre \texttt{python -m froth.review} y júzgalo!):
+
+\begin{itemize}
+  \item Cluster USGS: AMBOS eligen ``Minerals Yearbook --- These annual publications
+        review...'' --- cuando dos métricas independientes coinciden, esa frase ES el tema.
+  \item Cluster lepidolita: TextRank prefirió \emph{``...the lepidolite flotation process
+        and its challenges are summarized, including poor selectivity...''} --- frases de
+        REVIEW (resumen los retos del campo) reciben muchos votos porque tocan a todas.
+        Para un literature review, eso es una virtud.
+  \item Cluster geología: TextRank se fue a depósitos exógenos --- un subgrupo denso de
+        frases mineralógicas se vota entre sí y captura el ranking. El centroide, anclado
+        a los vectores de los PAPERS, resiste mejor esa trampa.
+\end{itemize}
+
+\begin{ojo}
+Los scores no son comparables entre métodos: el coseno vive en 0--1; PageRank reparte una
+probabilidad total de 1 entre N frases (por eso ves 0.008). Compara RANKINGS, no números.
+Y ninguno de los dos evita la redundancia --- eso es MMR (7.3).
+\end{ojo}
+
+\begin{resumen}
+TextRank = PageRank sobre el grafo de similitud de frases, resuelto por iteración de
+potencias. Premia el consenso (bueno para frases-resumen), pero un subgrupo denso puede
+capturarlo; el centroide premia lo típico. El experto decide cuál lee mejor --- o se
+combinan.
+\end{resumen}
+
+\end{document}

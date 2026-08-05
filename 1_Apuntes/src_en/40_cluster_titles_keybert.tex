@@ -1,0 +1,69 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{40}{Cluster titles that mean something: KeyBERT (not trimmed sentences)}
+
+\section{The problem (you spotted it)}
+
+Version 1 of the subtitles took the cluster's most central \emph{sentence} and cut it at 12
+words. Result: headings like ``Considering both\ldots'', ``In the present st\ldots'',
+fragments that hint at the topic but feel chopped off, like a half-read page. And the old
+keywords (c-TF-IDF: ``dpa, dda, lepidolite'') were no better: they classify well but they
+\emph{do not communicate}.
+
+\section{How the field solves it: KeyBERT}
+
+The standard (KeyBERT, and BERTopic's representation layer) does not trim sentences: it
+extracts short \textbf{keyphrases} and ranks them by MEANING.
+
+\begin{concepto}{KeyBERTInspired in 3 steps}
+\textbf{1. Candidates}: 2 to 3 word n-grams from the cluster's text (with the same hardened
+vectoriser from \texttt{cluster.py}: no digits, chemical elements spared). \\
+\textbf{2. Rank}: embed each candidate with SPECTER and measure its cosine to the cluster's
+\emph{centroid}. \\
+\textbf{3. Diversify}: MMR so the chosen phrases are not nearly identical.
+\end{concepto}
+
+The elegant part: these are the SAME pieces Froth already had (SPECTER $+$ cosine $+$ centroid
+$+$ MMR from Phase 7). That is why it was built by hand, with no new dependency, the project's
+pattern: build each piece in order to understand it.
+
+\section{Two stumbles that teach (your real data)}
+
+The first attempt produced titles with OCR noise (``limu'', ``nmic'', ``cgfs'') and generic ones
+(``ore flotation'' where it should have said ``lepidolite flotation''). Two fixes:
+
+\begin{itemize}
+  \item \textbf{\texttt{min\_df} $\geq$ 2}: require the phrase to appear in SEVERAL papers of
+        the cluster. OCR rubbish lives in a single abstract $\to$ out.
+  \item \textbf{Contrastive score} (the c-TF-IDF idea, but in embedding space):
+        \[
+        \mathrm{score} = \cos(\mathrm{phrase}, \mathrm{centroid}_c)
+                       - 0.4 \, \cos(\mathrm{phrase}, \mathrm{centroid}_{\mathrm{global}})
+        \]
+        It rewards what is close to THIS cluster and far from the whole corpus. That is how
+        ``lepidolite flotation'' (specific) beats ``ore flotation'' (generic, close to the
+        centre of everything).
+\end{itemize}
+
+\begin{ojo}
+The keyphrase closest to the centroid is NOT the best title: it tends to be the most generic.
+Specificity (far from the global average) is what makes a title \emph{say} something. Same
+lesson as the h-index and the relevance filter: the signal is in the contrast, not in the
+absolute value.
+\end{ojo}
+
+\begin{practica}
+The short title goes in the heading; the full centroid sentence is stored in the
+\texttt{summary} column and shows up on \textbf{hover}: short on top, detail on mouseover,
+exactly as you asked.
+\end{practica}
+
+\begin{resumen}
+Cluster titles $=$ 2 to 3 word keyphrases extracted KeyBERT-style (candidates $+$ SPECTER $+$
+cosine to the centroid $+$ MMR), with \texttt{min\_df} against the noise and a contrastive score
+(cluster $-$ global) to prefer the specific. Short, meaningful, with no trimmed sentences; the
+full sentence lives in the hover.
+\end{resumen}
+
+\end{document}

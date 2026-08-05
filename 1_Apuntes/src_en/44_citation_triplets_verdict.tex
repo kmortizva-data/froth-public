@@ -1,0 +1,114 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{44}{Citation triplets: training the way SPECTER does, and the inverted verdict}
+
+\section{Glossary in plain words}
+
+\begin{itemize}
+  \item \textbf{Fine-tuning}: taking an already-trained model (SPECTER) and giving it a
+        ``specialisation course'' with data from YOUR domain.
+  \item \textbf{Triplet}: a training example with 3 pieces: the \emph{anchor} (a paper), the
+        \emph{positive} (one that should end up CLOSE) and the \emph{negative} (one that should
+        end up FAR).
+  \item \textbf{Hard negative}: a DIFFICULT negative. It resembles the anchor but is not what
+        you are after. It teaches far more than an obvious negative.
+  \item \textbf{Epoch}: one complete pass over all the training examples.
+  \item \textbf{DBCV}: a quality mark for density-based clustering ($-1$ to $1$): it rewards
+        groups that are dense inside and well separated from each other.
+  \item \textbf{Double blind}: evaluating without knowing which option is which, so the
+        judgement is not contaminated.
+\end{itemize}
+
+\section{The question you asked}
+
+\emph{``Should we be able to improve the fine-tune, or is SPECTER perfect?''} The short answer:
+SPECTER is not perfect, but our previous fine-tunes used a weak method. v1 and v2 trained with
+pairs (title $\leftrightarrow$ abstract): that only teaches ``titles go with their abstracts'',
+and it drags everything to the corpus's centre of mass, which is why v2 (3$\times$ the data)
+did NOT beat v1 (note 41). The original SPECTER is trained differently: with \textbf{citation
+triplets}. If paper A cites B, B should end up close to A; a paper A does not cite should end
+up far.
+
+\section{Toy mini-example}
+
+Anchor: ``Flotation of micas with cationic collectors''. Positive: the collector paper THAT IT
+CITES. Hard negative: a paper cited by the positive but NOT by the anchor (two hops away: a
+relative of a relative, but not yours). At each step, the training MEASURES the distances and
+pushes: the positive a little closer, the negative a little further. Repeat 100,000 times and
+the whole space reorganises itself according to who-cites-whom.
+
+The uncapped harvest made this possible at scale: from 833 triplets (the old corpus) to
+\textbf{150,885} (100,190 with a hard negative), 181$\times$ more signal, because with 190,000
+papers many references fall INSIDE the corpus.
+
+\section{The training run (and its measured knobs)}
+
+First attempt: 2 epochs $\times$ 512-token sequences $=$ an estimated 17 hours on your RTX 5060
+(3.2 s/step, measured). Your decision: 1 epoch $+$ 256 tokens (abstracts at $\sim$200 tokens fit
+almost whole) $+$ checkpoints every 1,000 steps (the lesson of note 42: an interruption should
+cost minutes, not everything). Result: 3.4 steps per second, finished in $\sim$45 minutes. The
+model: \texttt{specter-mineral-v3}.
+
+\section{The verdict in two rounds}
+
+\textbf{Round 1, the metric (DBCV, 22 clean corpora, fixed sample of 1,500):}
+
+\begin{center}
+\begin{tabular}{lcc}
+ & beats base & mean delta \\
+\hline
+v1 (pairs, small)   & 14/22 & $+0.013$ \\
+v2 (pairs, large)   & 9/22  & $-0.022$ \\
+v3 (citation)       & 12/22 & $\mathbf{+0.023}$ \\
+v3 vs v2 head to head & 13/22 & $+0.046$ \\
+\end{tabular}
+\end{center}
+
+Your question is answered: the right METHOD wins where QUANTITY failed (v2 loses against base;
+v3 is the only one with a clear mean improvement). And an extra finding: on the old dirty
+corpora v1 was winning 16 of 22 with $+0.093$; after cleaning, ALL the advantages shrank. Part
+of the earlier ``improvement'' was knowing how to group the rubbish.
+
+\textbf{Round 2, the expert (you, double blind, 4 anonymous maps):} you ranked
+B$>$D$>$C$>$A\ldots{} which on revealing the key turned out to be \textbf{v1 $>$ v2 $>$ base $>$
+v3}. Almost the MIRROR image of the metric's ranking! DBCV's favourite (v3, 0.377) was your last
+place.
+
+\begin{concepto}{geometry $\neq$ narrative}
+DBCV measures whether the groups are dense and separated (geometry). You measure whether the map
+TELLS the story of the field (narrative). v3 learned from citations, so it groups
+\emph{citation communities}, who cites whom: schools, methods, journals, which form beautiful
+blobs for the metric but do not always coincide with readable TOPICS. v1, with its gentle
+adjustment, preserves the semantic organisation an expert reads.
+\end{concepto}
+
+\section{The decisions (yours, as the judge)}
+
+\begin{itemize}
+  \item \textbf{Production $\to$ v1}: you chose it blind TWICE (2026-07-12 and 2026-07-16) and
+        it beats base 14 of 22. Your installation uses local v1; the public version falls back
+        automatically to stock SPECTER (no friction, no manual downloads).
+  \item \textbf{v3 is not discarded, it is repurposed}: its ``citational'' space is exactly the
+        signal the future seed mode needs (``papers similar to THIS one'', ResearchRabbit
+        style): there, citation communities ARE what you are looking for.
+\end{itemize}
+
+\begin{ojo}
+If we had only looked at the metric, we would have put into production the model the expert
+reads WORST. If we had only looked at the expert, we would not know WHY v3 groups oddly (nor
+that it is gold for another task). Machine proposes, expert validates, and the two views
+together are worth more than either alone.
+\end{ojo}
+
+\begin{resumen}
+SPECTER's real recipe (citation triplets $+$ hard negatives) applied to YOUR 190,000 papers:
+150,885 triplets, 45 min of GPU, v3. The metric crowns it ($+0.023$ over base, the only clear
+positive; method $>$ quantity confirmed); your double blind puts it last and crowns v1, a mirror
+ranking. Double lesson: (1) the training method matters more than the volume of data; (2)
+geometric quality is not narrative quality, choose the model according to the TASK (v1 for
+readable maps, v3 as a candidate for citation similarity). ``No improvement for this'' is also a
+result, and so is finding its right task.
+\end{resumen}
+
+\end{document}

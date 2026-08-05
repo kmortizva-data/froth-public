@@ -1,0 +1,75 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{14}{Clustering: que el algoritmo encuentre los grupos (HDBSCAN)}
+
+\section{El problema}
+
+Tu mapa 2D (Apunte 13) muestra nubes a simple vista, pero ``a simple vista'' no es un método:
+necesitamos que un algoritmo delimite los grupos de forma objetiva y repetible. Eso es
+\textbf{clustering no supervisado}: agrupar sin que nadie diga qué es cada grupo ni cuántos hay.
+
+\section{La intuición clásica: K-means (y sus dos trampas)}
+
+\begin{concepto}{K-means}
+El método más famoso. Le dices ``quiero \textbf{K} grupos'' y él reparte los puntos en K
+grupos compactos. Simple y rápido, pero con dos trampas para nuestro caso:
+\begin{enumerate}
+  \item \textbf{Tienes que adivinar K.} ¿Cuántos subtemas tiene tu topic? Justo eso es lo que
+        NO sabemos (es lo que queremos descubrir).
+  \item \textbf{Obliga a TODOS los puntos a entrar en algún grupo.} El paper de poesía
+        acabaría asignado a un cluster de flotación, contaminándolo.
+\end{enumerate}
+\end{concepto}
+
+\section{La práctica: HDBSCAN, clustering por densidad}
+
+\begin{concepto}{HDBSCAN}
+En vez de repartir, HDBSCAN busca \textbf{zonas densas}: regiones donde hay muchos puntos
+apretados. Cada zona densa = un cluster. Consecuencias:
+\begin{itemize}
+  \item \textbf{Decide solo cuántos grupos hay} (nosotros no adivinamos K).
+  \item Lo que no pertenece a ninguna zona densa queda como \textbf{ruido} (etiqueta $-1$),
+        en vez de contaminar un grupo.
+  \item Su parámetro principal es \codigo{min\_cluster\_size}: cuántos puntos mínimo hacen
+        falta para que algo cuente como grupo (en Froth: \codigo{MIN\_CLUSTER\_SIZE = 8}).
+\end{itemize}
+\end{concepto}
+
+\section{Lo que pasó con TUS papers (la historia real)}
+
+Con \codigo{min\_cluster\_size=8}, HDBSCAN encontró \textbf{3 clusters + 9 papers de ruido}
+(y con 5, casi idéntico: resultado \emph{estable}, buena señal):
+
+\begin{center}
+\begin{tabular}{llp{6.6cm}}
+\textbf{Grupo} & \textbf{Tamaño} & \textbf{Qué resultó ser (Apunte 15)} \\
+\hline
+Cluster 0 & 49 & Geología de pegmatitas y granitos de metales raros \\
+Cluster 2 & 43 & Flotación de lepidolita (el corazón de la tesis) \\
+Cluster 1 & 25 & ``Cajón de lo ajeno'': reciclaje/economía del litio + los off-topic \\
+Ruido & 9 & Puentes generalistas y rarezas \\
+\end{tabular}
+\end{center}
+
+\begin{ojo}
+\textbf{Dos sorpresas que enseñan mucho:}
+\begin{enumerate}
+  \item \textbf{``Ruido'' no siempre es basura.} En el ruido cayeron dos clásicos totalmente
+        on-topic (p.ej.\ \emph{The Effect of Bubble Size on Fine Particle Flotation}, 527
+        citas). ¿Por qué? Son papers \emph{generalistas} que hablan con varios subtemas a la
+        vez: viven ``entre'' las nubes, sin pertenecer del todo a ninguna.
+  \item \textbf{Los off-topic no fueron ruido: fueron puestos en cuarentena juntos.} El paper
+        de telecomunicaciones, el de poesía y el de historia cayeron los tres dentro del
+        cluster 1. ``No ser del tema'' también es algo en común, y forma su propia nube lejos
+        de las nubes mineras.
+\end{enumerate}
+\end{ojo}
+
+\begin{resumen}
+K-means exige adivinar K y fuerza a todos adentro; HDBSCAN agrupa por densidad, decide solo
+cuántos grupos hay y aparta el ruido. En tus datos: 3 subtemas estables + 9 ruidos, con los
+off-topic en cuarentena dentro de su propio cluster.
+\end{resumen}
+
+\end{document}

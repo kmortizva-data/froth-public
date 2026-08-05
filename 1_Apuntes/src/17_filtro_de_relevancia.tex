@@ -1,0 +1,76 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{17}{El filtro de relevancia: el sistema se limpia solo}
+
+\section{El problema que TÚ detectaste}
+
+Validando el mapa (paso 3.7) viste un cluster etiquetado \emph{``women, men, commodity,
+masculinities''}. Diagnóstico: los papers infiltrados de la Fase 1 (poesía, telecomunicaciones,
+historia --- colisiones de siglas en las búsquedas) dominaban las keywords de un cluster que
+también contenía papers legítimos de economía del litio. La causa raíz estaba en el
+\emph{pull}, no en el mapa.
+
+\section{La solución elegante: medir cada paper contra el TOPIC}
+
+\begin{concepto}{score de relevancia}
+Ya tenemos todas las piezas: cada paper tiene su vector, y el \textbf{título de tu tesis}
+también puede tenerlo. Entonces: \emph{relevancia de un paper} $=$ similitud coseno entre su
+vector y el vector del TOPIC. Un paper de poesía queda lejos del título de una tesis de
+flotación $\rightarrow$ score bajo $\rightarrow$ fuera. El sistema usa \textbf{sus propios
+embeddings para limpiarse a sí mismo} --- cero reglas manuales, cero listas negras.
+\end{concepto}
+
+\begin{concepto}{el umbral lo dictan los datos, no la intuición}
+¿Dónde cortar? Miramos la distribución real de los 126 scores:
+\begin{center}
+\begin{tabular}{ll}
+Infiltrados (poesía, telecom, historia...) & 0.495 -- 0.543 \\
+\textbf{--- hueco natural ---} & \\
+Todo lo legítimo (incluida economía del Li) & 0.587 -- 0.90 \\
+\end{tabular}
+\end{center}
+Hay un \textbf{hueco} entre 0.543 y 0.587: el umbral \codigo{RELEVANCE\_THRESHOLD = 0.55}
+cae en medio y separa perfecto. Así se eligen umbrales en serio: mirando dónde los datos ya
+están separados, no inventando un número bonito.
+\end{concepto}
+
+\section{Dónde vive en el código}
+
+\begin{itemize}
+  \item \codigo{embed.py} $\rightarrow$ \codigo{relevance\_to\_topic()}: calcula los scores y
+        los guarda como columna \codigo{relevance} en \codigo{papers.parquet}.
+  \item \codigo{config.py} $\rightarrow$ \codigo{RELEVANCE\_THRESHOLD = 0.55} (con el
+        razonamiento comentado).
+  \item \codigo{cluster.py} $\rightarrow$ filtra ANTES de UMAP: la basura ni siquiera
+        participa en el acomodo, así el mapa entero mejora.
+\end{itemize}
+
+\section{Qué cambió en el mapa (iteración real de data science)}
+
+\begin{itemize}
+  \item Las etiquetas vergonzosas desaparecieron; el cluster de economía ahora es honesto
+        (\emph{usgs, old scrap} = reciclaje/commodities).
+  \item Emergió un \textbf{4º cluster} que estaba enterrado: literatura \textbf{en francés}
+        sobre recuperación de Nb-Ta-Sn --- probablemente la escuela francesa que estudia
+        Beauvoir. Hallazgo valioso... y lección nueva: \emph{el idioma también agrupa}
+        (SPECTER junta los papers franceses). Refinamiento futuro: ¿traducir abstracts o
+        aceptar ese cluster como subtema válido?
+  \item El ruido subió (9 $\rightarrow$ 21): al re-acomodarse el mapa, más papers quedaron
+        entre nubes. Para eso está tu slider de granularidad.
+\end{itemize}
+
+\begin{ojo}
+Así se ve el ciclo real del data science: \textbf{construir $\rightarrow$ mirar $\rightarrow$
+detectar algo raro $\rightarrow$ diagnosticar $\rightarrow$ arreglar $\rightarrow$ descubrir
+algo nuevo}. Tu ojo experto detectó el problema; los embeddings dieron la solución; y el
+arreglo destapó un hallazgo (el cluster francés) que nadie buscaba. Cada iteración enseña.
+\end{ojo}
+
+\begin{resumen}
+Relevancia $=$ coseno(paper, TOPIC); umbral 0.55 elegido por el hueco natural en los datos;
+filtrado antes de UMAP. Resultado: mapa limpio, etiquetas honestas y un cluster francés
+sorpresa sobre Beauvoir. El sistema se limpia con sus propias herramientas.
+\end{resumen}
+
+\end{document}

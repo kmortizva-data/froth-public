@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{28}{Conectores multi-fuente: tu cuenta institucional entra al juego}
+
+\section{Por qué no basta OpenAlex}
+
+OpenAlex es enorme ($\sim$250M trabajos) pero no lo tiene todo, y a veces le faltan
+abstracts. La idea de Batman: que el usuario \textbf{conecte sus propias cuentas} (estilo
+``Connect with Google'') y vea papers que la base gratuita no trae.
+
+\section{Los conectores (froth/sources.py)}
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Fuente} & \textbf{Requiere} & \textbf{Qué aporta} \\
+\hline
+OpenAlex & nada (key opcional) & la BASE: abstracts + referencias \\
+Crossref & solo un email & metadatos masivos de editoriales \\
+Semantic Scholar & key GRATIS (opcional) & abstracts + PDFs open access \\
+Scopus (Elsevier) & key institucional & el catálogo curado de Elsevier \\
+ResearchGate & \multicolumn{2}{l}{\textbf{NO}: sin API pública; su ToS prohíbe scraping} \\
+\end{tabular}
+\end{center}
+
+Principios de diseño:
+\begin{itemize}
+  \item \textbf{OpenAlex manda}: es el registro preferido (el más rico); los extras solo
+        AÑADEN papers que no teníamos.
+  \item \textbf{Dedup por DOI y luego por título} normalizado — el mismo paper llega por
+        varias fuentes y debe contar una vez.
+  \item \textbf{Fallo suave}: si una fuente está caída o te limita, avisa y el pull sigue
+        con las demás. Nunca un conector tumba la cosecha.
+  \item \textbf{Las keys son tuyas y locales}: viven en \codigo{.froth\_keys} (gitignored).
+        En la web pública vivirán solo en tu sesión de navegador — Froth jamás custodia
+        keys ajenas en un servidor.
+\end{itemize}
+
+\section{La primera cosecha multi-fuente (números reales)}
+
+\begin{itemize}
+  \item Crossref: 227 resultados crudos $\rightarrow$ el dedup reconoció \textbf{58
+        duplicados} de OpenAlex y aportó \textbf{169 nuevos} (tras el filtro de abstract:
+        corpus 126 $\rightarrow$ \textbf{157}).
+  \item Semantic Scholar sin key: rate-limit inmediato $\rightarrow$ \textbf{falló suave} tal
+        como se diseñó (con la key gratuita queda estable).
+  \item El corpus ampliado reveló un \textbf{subtema emergente}: física de
+        burbujas/partículas finas (+ bastnäsita) — antes enterrado, ahora cluster propio.
+        Más datos $\rightarrow$ más resolución del mapa.
+  \item El filtro de relevancia solo descartó 6: la cosecha extra venía limpia — el
+        auto-lavado del Apunte 17 escaló sin tocarlo.
+\end{itemize}
+
+\begin{resumen}
+sources.py suma Crossref/S2/Scopus a OpenAlex con dedup DOI→título y fallo suave; las keys
+son locales y del usuario (panel ``Connect institutional account''). Primera cosecha: +31
+papers netos y un subtema nuevo emergió. ResearchGate queda fuera por diseño (sin API legal).
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,59 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{36}{TextRank: PageRank over sentences (the hub among sentences)}
+
+\section{The idea: recycling Google's algorithm}
+
+PageRank ordered the web with a circular but solvable idea: \emph{a page matters if important
+pages link to it}. TextRank (Mihalcea \& Tarau, 2004) swaps pages for sentences and links for
+similarity: \emph{a sentence matters if important sentences resemble it}. It is EXACTLY your
+hub concept from Phase 4, applied inside each cluster.
+
+\begin{concepto}{the sentence graph and the random walk}
+Nodes $=$ the cluster's sentences; edge weight $=$ cosine between their SPECTER vectors.
+PageRank is computed by \textbf{power iteration}: imagine a reader hopping from sentence to
+sentence, preferring hops towards similar sentences; with probability $1-d$ ($d=0.85$) they
+teleport to any one at random. After iterating
+\[
+r \leftarrow \frac{1-d}{N} + d \, W r
+\]
+some 50 times, $r$ converges: the time the reader spends on each sentence IS its importance.
+In \texttt{froth/review.py} it is 4 lines of numpy, with no new libraries.
+\end{concepto}
+
+\section{Centroid vs TextRank: they do not measure the same thing}
+
+\begin{itemize}
+  \item \textbf{Centroid} rewards the \emph{typical}: the sentence most similar to the average.
+  \item \textbf{TextRank} rewards the \emph{endorsed}: the sentence with the most consensus
+        ``votes'', even if the consensus comes from a dense subgroup.
+\end{itemize}
+
+On your corpus (run \texttt{python -m froth.review} and judge for yourself):
+
+\begin{itemize}
+  \item USGS cluster: BOTH pick ``Minerals Yearbook, These annual publications review...''
+        When two independent metrics agree, that sentence IS the topic.
+  \item Lepidolite cluster: TextRank preferred \emph{``...the lepidolite flotation process and
+        its challenges are summarized, including poor selectivity...''} REVIEW sentences (they
+        summarise the field's challenges) get many votes because they touch everything. For a
+        literature review, that is a virtue.
+  \item Geology cluster: TextRank went off to exogenous deposits. A dense subgroup of
+        mineralogical sentences votes for itself and captures the ranking. The centroid,
+        anchored to the PAPERS' vectors, resists that trap better.
+\end{itemize}
+
+\begin{ojo}
+The scores are not comparable between methods: cosine lives in 0 to 1; PageRank splits a total
+probability of 1 among N sentences (which is why you see 0.008). Compare RANKINGS, not numbers.
+And neither of them avoids redundancy, that is MMR (7.3).
+\end{ojo}
+
+\begin{resumen}
+TextRank $=$ PageRank over the sentence similarity graph, solved by power iteration. It rewards
+consensus (good for summary sentences), but a dense subgroup can capture it; the centroid
+rewards the typical. The expert decides which reads better, or they get combined.
+\end{resumen}
+
+\end{document}

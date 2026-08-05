@@ -1,0 +1,61 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{13}{UMAP en acción: el primer mapa de tus 126 papers}
+
+\section{Qué hicimos}
+
+Corrimos UMAP de verdad sobre la matriz $126 \times 768$ y salió una tabla $126 \times 2$:
+una coordenada (x, y) por paper. Las guardamos en \codigo{2\_Datos/embeddings/umap\_2d.npy}
+y dibujamos el primer scatter (está en \codigo{3\_Resultados/umap\_first\_look.png}).
+
+\textbf{Lo importante del resultado:} sin decirle nada sobre minería, ya se ven
+\emph{estructuras}: una nube grande a la izquierda, un brazo arriba a la derecha, una franja
+diagonal abajo con un grumo apretado en la esquina. Eso son (probablemente) tus subtemas
+esperando nombre. El paso siguiente (HDBSCAN) los delimitará formalmente.
+
+\section{Las tres decisiones del código (y por qué)}
+
+\begin{concepto}{metric="cosine" — medir con la misma vara}
+UMAP necesita decidir quiénes son los ``vecinos'' de cada punto, y para eso mide distancias.
+Le dijimos que las mida con \textbf{similitud coseno} — exactamente la misma vara de la
+Fase 2 (Apunte 08). Si la Fase 2 compara papers por coseno y UMAP usara otra medida, el mapa
+contaría una historia diferente a la del buscador. Consistencia ante todo.
+\end{concepto}
+
+\begin{concepto}{random\_state=42 — reproducibilidad}
+UMAP tiene azar interno (de dónde parte el acomodo). Sin semilla fija, cada corrida daría un
+mapa \emph{ligeramente} distinto — mismos grupos, otras posiciones. Fijar
+\codigo{random\_state=42} hace que cualquiera que corra tu código obtenga \textbf{el mismo
+mapa}. En ciencia (y en tu tesis) eso se llama \emph{reproducibilidad} y es sagrado.
+(El 42 es una broma-tradición de programadores; cualquier número fijo sirve.)
+\end{concepto}
+
+\begin{concepto}{n\_components=2 — cuántas dimensiones de salida}
+Le pedimos 2 dimensiones porque el objetivo es \emph{dibujar}. Se puede reducir a 5 o 10
+(útil a veces para el clustering); lo exploraremos si hace falta.
+\end{concepto}
+
+\begin{ojo}
+En el scatter quitamos los números de los ejes \textbf{a propósito}. Tras el Apunte 12 ya
+sabes por qué: en UMAP los ejes no significan nada. Si algún día ves un mapa UMAP con ejes
+numerados e interpretados (``a mayor X, mayor tal cosa''), desconfía del autor.
+\end{ojo}
+
+\section{Cómo leer tu primer mapa}
+
+\begin{itemize}
+  \item \textbf{Nubes densas} = grupos de papers que hablan de lo mismo (futuros clusters).
+  \item \textbf{Puntos sueltos / puentes} = papers que mezclan temas o que no encajan
+        (candidatos a ``ruido'' en HDBSCAN).
+  \item \textbf{Forma general} (brazo, franja, grumo): sugiere subtemas con distinta cohesión
+        --- un grumo apretado es un tema muy específico; una nube amplia, un tema general.
+\end{itemize}
+
+\begin{resumen}
+UMAP convirtió 768 dimensiones en un mapa 2D reproducible (semilla fija) midiendo vecinos
+con coseno (la misma vara de siempre), y las nubes aparecieron solas: son los subtemas que
+HDBSCAN delimitará en el siguiente paso.
+\end{resumen}
+
+\end{document}

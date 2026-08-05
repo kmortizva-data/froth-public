@@ -1,0 +1,90 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{19}{Graphs: nodes, edges, hubs and bridges}
+
+\section{What a graph is}
+
+\begin{concepto}{graph $=$ things $+$ relations}
+Think of your social network: people $=$ \textbf{nodes}, friendships $=$ \textbf{edges} (the
+lines). That structure, things connected by relations, is a \textbf{graph}, and it sits behind
+Google Maps (junctions $+$ streets), LinkedIn (people $+$ contacts) and our mind map (papers
+$+$ ``are related to''). The standard library in Python: \codigo{networkx}.
+\end{concepto}
+
+Four ideas we will use:
+\begin{enumerate}
+  \item \textbf{Weight}: not all relations are equally strong. ``They match at 0.94'' weighs
+        more than ``they match at 0.60'', and the line is drawn thicker.
+  \item \textbf{Direction}: similarity is mutual (an edge with no arrow); citations are not,
+        A cites B, not the other way round (an edge \emph{with} an arrow).
+  \item \textbf{Hub}: a node with a great many connections.
+  \item \textbf{Bridge}: a node or edge connecting two communities that barely touch.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0, every node/.style={circle, inner sep=2pt}]
+  % community A (flotation, green-ish left)
+  \foreach \p/\n in {(0,1)/a1, (0.9,1.7)/a2, (1.0,0.4)/a3, (1.8,1.1)/a4}
+    \fill[litgreen!70] \p circle (5pt) coordinate (\n);
+  \draw[litgreen!70] (a1)--(a2) (a1)--(a3) (a2)--(a4) (a3)--(a4) (a1)--(a4) (a2)--(a3);
+  \node[litgreen] at (0.9,2.3) {\small community A (flotation)};
+  % community B (geology, blue right)
+  \foreach \p/\n in {(5.6,1.0)/b1, (6.5,1.7)/b2, (6.6,0.3)/b3, (7.4,1.0)/b4}
+    \fill[litblue!70] \p circle (5pt) coordinate (\n);
+  \draw[litblue!70] (b1)--(b2) (b1)--(b3) (b2)--(b4) (b3)--(b4) (b1)--(b4) (b2)--(b3);
+  \node[litblue] at (6.5,2.3) {\small community B (geology)};
+  % bridge node
+  \fill[litorange] (3.7,0.9) circle (6pt) coordinate (br);
+  \draw[litorange, thick] (a4)--(br)--(b1);
+  \node[litorange] at (3.7,0.2) {\small \textbf{bridge}};
+  % hub marker: a4 has most connections
+  \node[litgreen] at (2.45,1.55) {\small hub};
+\end{tikzpicture}
+\end{center}
+
+\section{What each one is for in YOUR literature review}
+
+\begin{concepto}{hubs $=$ foundation; bridges $=$ originality}
+\begin{itemize}
+  \item \textbf{The hub} is the compulsory reading: the classic everyone cites. It goes in the
+        introduction of your review, it shows you know the ground. But \emph{everybody knows
+        the hubs}: there is no novelty possible there.
+  \item \textbf{The bridge} connects two topics that barely speak to each other. If only 2
+        papers join ``flotation'' with ``deposit geology'', that frontier is under-explored
+        $\rightarrow$ a new contribution fits there. The \emph{gaps} of Phase 5 are, literally,
+        missing bridges.
+\end{itemize}
+Short answer: hubs to ground yourself, \textbf{bridges to contribute}.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Your thesis IS a bridge.} Look at the title: \emph{``Flotation of ... Li bearing mica
+minerals \textbf{and its impact on} the by-products (Ta, Nb, Be,...) recovery...''}. It
+connects exactly the green cluster (flotation) with the blue one (geology / granite
+by-products). It is not a topic \emph{inside} a community: it is the \emph{frontier} between
+two. That is why it is a thesis and not an assignment. When the network is built, look for
+yourself in it.
+\end{ojo}
+
+\section{Which graph we will build (what comes next)}
+
+\begin{enumerate}
+  \item \textbf{Similarity network} (4.2): each paper connected to its k most similar
+        neighbours by cosine \textbf{in 768D} (the real space, not the 2D map, see Note 12).
+        With a threshold, so it does not come out as a ``hairball''.
+  \item \textbf{Citation network} (4.3): arrows for who cites whom. It requires re-downloading
+        the papers asking for the \codigo{referenced\_works} field that we did not request in
+        Phase 1.
+  \item \textbf{Topic mind map} (4.4): one node per subtopic, edges $=$ how related they are.
+        The presentable view.
+\end{enumerate}
+
+\begin{resumen}
+A graph is nodes $+$ edges (with weight and sometimes direction). Hubs are the classics that
+ground you; bridges are the frontiers where originality lives, and your own thesis is a bridge
+between flotation and geology. We will build similarity, citation and topic networks.
+\end{resumen}
+
+\end{document}

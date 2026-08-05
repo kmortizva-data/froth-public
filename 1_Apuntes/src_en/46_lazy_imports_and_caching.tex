@@ -1,0 +1,182 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{46}{Why a program is slow to open: import late, and never compute twice}
+
+\section{Glossary in plain words}
+
+\begin{itemize}
+  \item \textbf{Import}: when your program says \codigo{import umap}, Python goes to
+        disk, finds that library, reads all of it and holds it in memory. That takes
+        time. And it happens \emph{even if you never use it}.
+  \item \textbf{Library}: code other people wrote that you reuse. UMAP, HDBSCAN and
+        PyTorch are libraries.
+  \item \textbf{Module level}: the lines flush against the left margin of a \codigo{.py}
+        file. They run the moment anyone imports that file, without anyone calling
+        anything.
+  \item \textbf{Lazy import}: moving the \codigo{import} INSIDE the function that needs
+        it, so the cost is paid the first time you use that function, not when the
+        program opens.
+  \item \textbf{Cache}: keeping an already computed result so you do not repeat the work.
+  \item \textbf{In-memory cache}: kept while the program is alive. Close the program and
+        it is \textbf{gone}.
+  \item \textbf{On-disk cache}: kept in a file. It survives closing the program, shutting
+        the machine down, and coming back tomorrow.
+  \item \textbf{Cache key}: the label you file the result under. If the label changes,
+        the stored result no longer applies and the work is redone.
+\end{itemize}
+
+\section{The problem, as it arrived}
+
+Batman wrote: \emph{``the wait is far too long''}. Short sentence, no diagnosis. The rule
+in this project is not to guess: measure.
+
+Every piece of Froth's startup was timed separately. This came out:
+
+\begin{center}
+\begin{tabular}{lr}
+\hline
+\textbf{Startup step} & \textbf{Seconds} \\
+\hline
+importing \codigo{umap} + \codigo{hdbscan}          & 24.8 \\
+importing \codigo{torch} + \codigo{sentence\_transformers} & 19.7 \\
+importing \codigo{streamlit}                        & 2.1 \\
+loading the SPECTER model                           & 2.5 \\
+DBCV sweep (choosing the granularity)               & 2.3 \\
+reading the data off disk                           & 0.2 \\
+\hline
+\textbf{TOTAL} & \textbf{52.2} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{concepto}{What the table teaches}
+44.5 of the 52.2 seconds are \emph{importing libraries}. And Froth's home screen (the
+title, the topic dropdown, the box for pasting a new title) \textbf{uses none of them}.
+You were waiting 45 seconds for code that was never going to run.
+\end{concepto}
+
+\section{First fix: import late}
+
+Before, at the very top of \codigo{froth/cluster.py}:
+
+\begin{verbatim}
+import umap
+import hdbscan
+\end{verbatim}
+
+After, inside the function that actually uses it:
+
+\begin{verbatim}
+def reduce_to_2d(vectors):
+    import umap          # paid here, not when the app opens
+    reducer = umap.UMAP(n_components=2, metric="cosine", random_state=42)
+    return reducer.fit_transform(vectors)
+\end{verbatim}
+
+\begin{ojo}
+\textbf{The cost does not vanish: it moves.} UMAP still takes its 30 seconds. What
+changes is \emph{when}. Before, you paid it staring at a blank screen with no way to tell
+whether the program was alive. Now you pay it while harvesting a new topic, with a
+progress bar in front of you saying what it is doing. The same wait feels completely
+different depending on whether you know what you are waiting for.
+\end{ojo}
+
+\section{But the big one was still hiding}
+
+With the imports fixed, cold startup dropped to 8.8 seconds. And yet, opening the real
+app, it \textbf{still took over three and a half minutes}.
+
+The lesson sits right here: \textbf{a stopwatch only measures what you point it at}. I
+had timed the imports, not the whole app. Looking at what the app printed while it worked
+turned up the real culprit:
+
+\begin{verbatim}
+Naming the subtopics (reading abstracts)...
+\end{verbatim}
+
+Naming the 44 subtopics. For each one you read its abstracts, pull out candidate phrases,
+turn them into vectors with SPECTER and keep the one that best represents the group (that
+is note 40). That is expensive. And it was redone \textbf{in full, every single time you
+opened the application}.
+
+\begin{concepto}{Why it repeated if it was already ``cached''}
+The code already used \codigo{@st.cache\_data}, which stores the result \textbf{in RAM}.
+That works beautifully while the app is open: switch tabs and nothing is recomputed. But
+closing the app frees that memory. Tomorrow you pay the three minutes again.
+
+An in-memory cache protects you from repeating within a session. It does not protect you
+from repeating \emph{between} sessions. For that you need disk.
+\end{concepto}
+
+\section{Second fix: save to disk, under the right key}
+
+The names now go into a \codigo{.json} file. The interesting part is not the saving, it
+is \textbf{what label they are saved under}.
+
+\begin{verbatim}
+key = f"{version}|{mcs}|{years[0]}-{years[1]}"
+digest = hashlib.sha1(key.encode()).hexdigest()[:12]
+# -> 2_Datos/processed/subtitles_36e4d383cfce.json
+\end{verbatim}
+
+The label mixes the three things the names depend on:
+
+\begin{itemize}
+  \item \textbf{the data version}: harvest more papers and the subtopics change;
+  \item \textbf{the granularity}: moving the slider builds different subtopics;
+  \item \textbf{the year range}: filtering by year drops papers, and the groups shift.
+\end{itemize}
+
+Change any of the three and the label changes, the stored file is not found, and the work
+is redone. Change none and it is read from disk instantly.
+
+\begin{ojo}
+\textbf{This is the classic caching bug, and it is frightening because it fails quietly.}
+If your key is too narrow (say, only the corpus name), the program shows you yesterday's
+names on today's data. Nothing breaks, nothing warns you: it simply lies. A cache with a
+bad key is worse than no cache at all.
+\end{ojo}
+
+\begin{concepto}{This does NOT contradict rule 9}
+It might look as though storing the result is the opposite of ``recompute for every
+corpus''. It is not. It is still computed for \emph{this} corpus, from \emph{its} data.
+The only thing removed is computing \textbf{the same question twice}. A fixed default
+would mean never measuring; this is measuring once and remembering.
+\end{concepto}
+
+\section{The result}
+
+\begin{center}
+\begin{tabular}{lrr}
+\hline
+ & \textbf{Before} & \textbf{After} \\
+\hline
+Opening the app until it is usable & $>$3.5 min & $\approx$30 s \\
+Importing libraries alone          & 52.2 s     & 8.8 s \\
+Does SPECTER load at startup?      & yes        & no \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{practica}
+Check it yourself, and learn to measure while you are at it:
+
+\begin{enumerate}
+  \item Open Froth from the desktop shortcut and count until the home screen appears.
+  \item Now move the granularity slider to a number you have never used (say 7). Notice:
+        \emph{there} it does wait, because that combination is not stored yet.
+  \item Move it back to 18, then to 7 again. The second time is instant: it is on disk.
+  \item Look inside \codigo{2\_Datos\textbackslash processed\textbackslash}. There is one
+        \codigo{subtitles\_...json} per combination you tried. Open one in a text editor:
+        those are your subtopic names.
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+If a program is slow to open, measure before you touch anything: it is almost always
+doing work that is not needed yet (import it late) or work it already did yesterday
+(store it on disk, under a key that includes EVERYTHING that can change the answer).
+\end{resumen}
+
+\end{document}

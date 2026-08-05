@@ -1,0 +1,59 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{38}{El draft v2: mezclar jueces con Borda y citar por construcción}
+
+\section{Ensamblar sin inventar}
+
+\texttt{draft\_review\_v2()} junta las tres piezas (apuntes 35-37) en un borrador por
+cluster: una frase ABRE (panorama), 2 frases RESPALDAN (típicas pero diversas), y cada
+una lleva su cita $[n]$ apuntando al paper del que salió textual. La numeración es
+global y por orden de aparición; el mismo motor emite el \texttt{.bib} para LaTeX/Zotero.
+Nada se genera: nada puede alucinarse.
+
+\section{El problema del opener y la solución de Borda}
+
+El plan era ``TextRank abre'' (sus frases-panorama son ideales). Pero en geología abrió
+con la frase de depósitos exógenos --- la captura por subgrupo denso del apunte 36. Los
+scores de centroide (coseno 0-1) y TextRank (probabilidad repartida) NO son comparables,
+así que no se pueden promediar... pero los \emph{rankings} sí.
+
+\begin{concepto}{conteo de Borda (1770, elecciones; hoy, rank aggregation)}
+Cada método ordena las frases y la posición es el ``voto'': 1º = 0 puntos, 2º = 1, etc.
+Gana la frase con MENOR suma de posiciones. Para secuestrar el opener habría que engañar
+a los DOS jueces a la vez: el subgrupo denso pierde porque el centroide rankea bajas sus
+frases. Con tus datos: geología pasó de exógenos a composición química de pegmatitas;
+lepidolita conservó su apertura panorámica.
+\end{concepto}
+
+\section{Fidelidad: rechazar, no recortar}
+
+El primer draft abrió lepidolita con \emph{``In addition, ...''} --- un conector que
+apunta a texto inexistente. Dos arreglos posibles: RECORTAR el conector (modifica la
+cita textual: prohibido por la regla de fidelidad del proyecto) o RECHAZAR la frase y
+dejar que Borda promueva la siguiente. Se rechaza: el filtro
+\texttt{\_self\_contained()} ahora también veta conectores de discurso de dos palabras
+(``In addition'', ``On the other hand'', ``In contrast''...). La siguiente elegida fue
+\emph{``Efficient flotation of lepidolite is crucial...''} --- mejor apertura, cero
+manipulación del original.
+
+\begin{ojo}
+El \dag{} del draft marca frases donde centroide y TextRank coinciden en el top-3
+(consenso = sello de confianza). Si una sección no tiene \dag, no está mal --- solo
+significa que los dos jueces vieron virtudes distintas.
+\end{ojo}
+
+\begin{practica}
+\texttt{.venv\textbackslash Scripts\textbackslash python.exe -m froth.review} genera
+\texttt{3\_Resultados/review\_draft\_v2.md} (42 refs trazables en Beauvoir) y su
+\texttt{.bib}. Abre el .md y verifica una cita: busca el $[n]$, ve a References, y
+comprueba que la frase existe en el abstract de ese paper. Trazabilidad auditable.
+\end{practica}
+
+\begin{resumen}
+Draft v2 = Borda elige el opener (engañar a dos jueces es más difícil que a uno),
+MMR pone el respaldo diverso, cada frase va textual con cita $[n]$ + BibTeX. Frases con
+conectores colgantes se RECHAZAN (nunca se recortan): la fidelidad manda.
+\end{resumen}
+
+\end{document}

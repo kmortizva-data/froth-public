@@ -1,0 +1,54 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{34}{Resumen extractivo vs abstractivo: por qué el nuestro no puede alucinar}
+
+\section{El problema de la Fase 7}
+
+El review v1 es un andamio honesto pero seco: keywords + listas de papers. Para que
+\emph{diga} algo hay dos caminos, y la diferencia entre ellos es LA decisión de diseño
+más importante de esta fase.
+
+\begin{concepto}{extractivo vs abstractivo}
+\textbf{Abstractivo}: un modelo GENERA texto nuevo que ``suena a'' resumen (ChatGPT,
+Elicit). Fluido, pero el texto no existe en ninguna fuente: puede inventar afirmaciones
+y --- peor --- referencias. \\
+\textbf{Extractivo}: el sistema SELECCIONA frases reales que ya existen en los abstracts.
+Menos fluido, pero cada frase tiene un paper de origen: la cita es trazable
+\emph{por construcción}. Alucinar es imposible: no se genera ni una palabra.
+\end{concepto}
+
+\section{Por qué elegimos extractivo primero}
+
+\begin{itemize}
+  \item \textbf{Confianza}: un review académico con UNA referencia inventada muere.
+        ChatGPT ``a pelo'' es famoso por citar papers que no existen.
+  \item \textbf{Trazabilidad gratis}: como la frase viene de un abstract del corpus,
+        el botón ``know more'' y la cita [n] ya funcionan sin verificación extra.
+  \item \textbf{Es ML de verdad}: rankear frases usa embeddings, coseno, grafos y
+        PageRank --- todo lo que ya construiste, a una escala nueva (frases, no papers).
+  \item El pulido con LLM (parafrasear frases YA elegidas, verificando citas) queda como
+        capa OPCIONAL encima --- nunca como base (7.6).
+\end{itemize}
+
+\section{La cocina: de abstract a frases utilizables}
+
+En \texttt{froth/review.py}, \texttt{split\_sentences()} corta cada abstract donde hay
+puntuación final seguida de mayúscula, y \texttt{\_self\_contained()} descarta lo que no
+sobrevive solo: fragmentos ($<$8 palabras), maratones ($>$60) y frases que arrancan con
+\textbf{anáforas} --- ``This method...'', ``It also...'' --- porque apuntan a un texto que
+el lector del review no verá.
+
+\begin{ojo}
+El extractivo hereda las limitaciones de su materia prima: trabajamos con ABSTRACTS
+(no full text), y un abstract mal escrito da frases mediocres. El review v2 sigue siendo
+un andamio mejorado, no prosa final --- honestidad ante todo.
+\end{ojo}
+
+\begin{resumen}
+Extractivo = seleccionar frases reales (trazable, sin alucinación); abstractivo = generar
+texto (fluido, riesgoso). Froth construye sobre extractivo y deja el LLM local como
+pulidor opcional de frases ya elegidas.
+\end{resumen}
+
+\end{document}

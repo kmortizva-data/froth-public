@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{07}{Vectorizar los 126 papers: la matriz de embeddings}
+
+\section{De uno a todos}
+
+En el Apunte 06 convertimos \emph{un} paper en su vector. Aquí convertimos los
+\textbf{126 de golpe} y \textbf{guardamos} el resultado en disco. Esta es la diferencia
+clave: antes solo mirábamos; ahora producimos un dato que las siguientes fases reutilizarán.
+
+\begin{concepto}{matriz (N filas $\times$ M columnas)}
+Un vector es una fila de números. Si apilas muchos vectores, obtienes una \textbf{matriz}:
+una tabla de números. La nuestra tiene forma \codigo{(126, 768)}:
+\begin{itemize}
+  \item \textbf{126 filas} --- una por paper.
+  \item \textbf{768 columnas} --- las coordenadas de cada paper.
+\end{itemize}
+La \emph{fila i} de la matriz es el vector del \emph{paper i} de la tabla: mismo orden. Esa
+alineación es sagrada --- así sabemos qué vector pertenece a qué paper.
+\end{concepto}
+
+\section{Procesar en lote (batch): por qué es más rápido}
+
+El código no llama al modelo 126 veces (una por paper). Le pasa la \textbf{lista completa}
+de textos y el modelo los procesa en \emph{lotes} (viste la barra \codigo{Batches: 4/4}).
+
+\begin{concepto}{batch (lote)}
+Procesar en lote significa dar muchos ejemplos juntos para que el modelo aproveche mejor el
+procesador (hace las cuentas en paralelo). Uno por uno funcionaría, pero sería más lento.
+Nuestros 126 papers tardaron $\sim$45 segundos en CPU; con una tarjeta gráfica sería aún
+más rápido, pero para este tamaño no hace falta.
+\end{concepto}
+
+\section{Guardar en disco: el archivo \codigo{.npy}}
+
+Vectorizar cuesta segundos; no queremos repetirlo cada vez. Por eso guardamos la matriz en
+\codigo{2\_Datos/embeddings/vectors.npy}.
+
+\begin{concepto}{formato .npy (NumPy)}
+\codigo{.npy} es el formato propio de NumPy para guardar arrays/matrices de números tal
+cual, sin convertir a texto. Se escribe con \codigo{np.save()} y se relee al instante con
+\codigo{np.load()}. Nuestra matriz de 126$\times$768 pesa apenas $\sim$378 KB. Las fases
+siguientes (reducir a 2D, agrupar) leerán este archivo en vez de recalcular.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Regla de oro del pipeline:} cada fase deja su resultado guardado y la siguiente lo
+lee. Papers $\rightarrow$ \codigo{papers.parquet}; vectores $\rightarrow$ \codigo{vectors.npy}.
+Si algo se rompe más adelante, no tienes que volver a bajar papers ni recalcular embeddings:
+retomas desde el último archivo guardado.
+\end{ojo}
+
+\section{Lo que quedó construido}
+
+\begin{itemize}
+  \item La función \codigo{embed\_papers(df)} en \codigo{froth/embed.py} (ya no está vacía).
+  \item El archivo \codigo{2\_Datos/embeddings/vectors.npy} con la matriz 126$\times$768.
+  \item Utilidades \codigo{save\_embeddings()} y \codigo{load\_embeddings()} para las
+        fases que vienen.
+\end{itemize}
+
+\begin{resumen}
+Apilamos los 126 vectores en una matriz (126$\times$768), la calculamos en lote (rápido) y la
+guardamos en \codigo{vectors.npy} para no recalcular; la fila i siempre es el paper i.
+\end{resumen}
+
+\end{document}

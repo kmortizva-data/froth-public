@@ -1,0 +1,103 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{08}{Cosine similarity: measuring how alike two papers are}
+
+\section{The problem}
+
+You already have 126 points (vectors) on the map of meaning. Natural question: given two
+papers, how does the computer put a number on ``how alike they are''? With \textbf{cosine
+similarity}.
+
+\section{The idea: the angle between two arrows}
+
+Each vector is an \textbf{arrow} leaving the origin and pointing at the paper's position. To
+compare two papers we look at the \textbf{angle} between their arrows:
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+  % similar case
+  \draw[->,gray] (0,0) -- (3.2,0);
+  \draw[->,gray] (0,0) -- (0,3.2);
+  \draw[->,litblue,very thick] (0,0) -- (2.6,2.2);
+  \draw[->,litgreen,very thick] (0,0) -- (2.9,1.6);
+  \draw (1.0,0.62) arc (32:40:1.2);
+  \node at (1.7,0.55) {\small small angle};
+  \node[align=center] at (1.6,-0.8) {\small\textbf{alike}\\[-2pt]\small cosine $\approx 1$};
+  % separator
+  \node at (4.6,1.5) {\Large $\Rightarrow$};
+  % different case
+  \begin{scope}[xshift=6cm]
+    \draw[->,gray] (0,0) -- (3.2,0);
+    \draw[->,gray] (0,0) -- (0,3.2);
+    \draw[->,litblue,very thick] (0,0) -- (2.9,0.5);
+    \draw[->,litorange,very thick] (0,0) -- (0.5,2.9);
+    \node[align=center] at (1.6,-0.8) {\small\textbf{different}\\[-2pt]\small cosine $\approx 0$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\begin{concepto}{cosine similarity}
+It is the \textbf{cosine of the angle} between two vectors. It gives an easy number to read:
+\begin{itemize}
+  \item Arrows nearly aligned (small angle) $\rightarrow$ cosine \textbf{close to 1}
+        $\rightarrow$ same topic.
+  \item Perpendicular arrows (90$^\circ$) $\rightarrow$ cosine \textbf{close to 0}
+        $\rightarrow$ unrelated.
+\end{itemize}
+For text embeddings the value usually falls between 0 and 1.
+\end{concepto}
+
+\begin{ojo}
+Why the \emph{angle} and not the \emph{distance} between the tips? Because what matters is
+\textbf{which way} the meaning points, not how long the arrow is. Two papers on the same
+topic, one with a long abstract and one with a short one, will have arrows of different
+``size'' but pointing the same way: the angle recognises them as equal; straight-line
+distance would be fooled by the size.
+\end{ojo}
+
+\section{The test on your papers (real numbers)}
+
+We took the paper \emph{``Enrichment of Lepidolite via Flotation''} and computed its cosine
+against the other 125. This came out:
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Cosine} & \textbf{Paper} & \textbf{Does it make sense?} \\
+\hline
+0.942 & Selective Inhibition ... Flotation of Lepidolite & yes: same topic \\
+0.941 & Froth Flotation of Lepidolite, A Review & yes: same topic \\
+0.932 & Flotation Collectors for Lepidolite Mineral & yes: same topic \\
+\hline
+0.511 & ...Radio Resources for Multicell Mobile & no: telecommunications \\
+0.507 & Adrienne Rich and the Poetry... & no: poetry \\
+0.495 & Theodore Beza... Peace in France 1572 & no: history \\
+\end{tabular}
+\end{center}
+
+The lepidolite flotation papers came out with a cosine of $\sim$0.94 (nearly identical in
+topic), and the off-topic noise that slipped in during Phase 1 sat at $\sim$0.50 (far away).
+The system sorted them correctly \textbf{knowing nothing about mining}: purely from the
+meaning of the abstracts.
+
+\begin{concepto}{the tool: scikit-learn's \codigo{cosine\_similarity}}
+We do not compute the angle by hand.
+\codigo{sklearn.metrics.pairwise.cosine\_similarity} takes vectors and returns the cosines.
+We passed it one paper against the matrix of 126 and got all 126 similarities in one go.
+\end{concepto}
+
+\section{What this is for}
+
+This number is the building block of the \textbf{semantic search engine} (next step): to find
+the papers closest to a phrase, we turn the phrase into a vector and keep the ones with the
+\emph{highest} cosine. And in Phase 3, that same idea of ``who is near whom'' is what forms
+the subtopic bubbles.
+
+\begin{resumen}
+Cosine similarity measures the angle between two vectors: $\approx 1$ same topic, $\approx 0$
+unrelated. On your papers, flotation vs flotation gave 0.94 and flotation vs noise 0.50: it
+works.
+\end{resumen}
+
+\end{document}

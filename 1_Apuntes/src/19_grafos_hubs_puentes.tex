@@ -1,0 +1,88 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{19}{Grafos: nodos, aristas, hubs y puentes}
+
+\section{Qué es un grafo}
+
+\begin{concepto}{grafo = cosas + relaciones}
+Piensa en tu red social: personas $=$ \textbf{nodos}, amistades $=$ \textbf{aristas} (las
+líneas). Esa estructura —cosas conectadas por relaciones— es un \textbf{grafo}, y está detrás
+de Google Maps (cruces + calles), LinkedIn (gente + contactos) y nuestro mapa mental
+(papers + ``se relacionan con''). La librería estándar en Python: \codigo{networkx}.
+\end{concepto}
+
+Cuatro ideas que usaremos:
+\begin{enumerate}
+  \item \textbf{Peso}: no todas las relaciones son igual de fuertes. ``Se parecen 0.94'' pesa
+        más que ``se parecen 0.60'' — la línea se dibuja más gruesa.
+  \item \textbf{Dirección}: la similitud es mutua (arista sin flecha); las citas no — A cita
+        a B, no al revés (arista \emph{con} flecha).
+  \item \textbf{Hub}: nodo con muchísimas conexiones.
+  \item \textbf{Puente}: nodo o arista que conecta dos comunidades que casi no se tocan.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0, every node/.style={circle, inner sep=2pt}]
+  % community A (flotation, green-ish left)
+  \foreach \p/\n in {(0,1)/a1, (0.9,1.7)/a2, (1.0,0.4)/a3, (1.8,1.1)/a4}
+    \fill[litgreen!70] \p circle (5pt) coordinate (\n);
+  \draw[litgreen!70] (a1)--(a2) (a1)--(a3) (a2)--(a4) (a3)--(a4) (a1)--(a4) (a2)--(a3);
+  \node[litgreen] at (0.9,2.3) {\small comunidad A (flotación)};
+  % community B (geology, blue right)
+  \foreach \p/\n in {(5.6,1.0)/b1, (6.5,1.7)/b2, (6.6,0.3)/b3, (7.4,1.0)/b4}
+    \fill[litblue!70] \p circle (5pt) coordinate (\n);
+  \draw[litblue!70] (b1)--(b2) (b1)--(b3) (b2)--(b4) (b3)--(b4) (b1)--(b4) (b2)--(b3);
+  \node[litblue] at (6.5,2.3) {\small comunidad B (geología)};
+  % bridge node
+  \fill[litorange] (3.7,0.9) circle (6pt) coordinate (br);
+  \draw[litorange, thick] (a4)--(br)--(b1);
+  \node[litorange] at (3.7,0.2) {\small \textbf{puente}};
+  % hub marker: a4 has most connections
+  \node[litgreen] at (2.45,1.55) {\small hub};
+\end{tikzpicture}
+\end{center}
+
+\section{Para qué sirve cada uno en TU literature review}
+
+\begin{concepto}{hubs = cimiento; puentes = originalidad}
+\begin{itemize}
+  \item \textbf{El hub} es la lectura obligatoria: el clásico que todos citan. Va en la
+        introducción de tu review — demuestra que conoces el terreno. Pero \emph{todo el
+        mundo conoce los hubs}: ahí no hay novedad posible.
+  \item \textbf{El puente} conecta dos temas que casi no se hablan. Si solo 2 papers unen
+        ``flotación'' con ``geología del yacimiento'', esa frontera está poco explorada
+        $\rightarrow$ ahí cabe una contribución nueva. Los \emph{gaps} de la Fase 5 son,
+        literalmente, puentes que faltan.
+\end{itemize}
+Respuesta corta: hubs para fundamentar, \textbf{puentes para aportar}.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Tu tesis ES un puente.} Mira el título: \emph{``Flotation of ... Li bearing mica
+minerals \textbf{and its impact on} the by-products (Ta, Nb, Be,...) recovery...''}. Conecta
+exactamente el cluster verde (flotación) con el azul (geología/by-products del granito).
+No es un tema \emph{dentro} de una comunidad: es la \emph{frontera} entre dos. Por eso es
+una tesis y no una tarea. Cuando la red esté construida, búscate en ella.
+\end{ojo}
+
+\section{Qué grafo construiremos (lo que viene)}
+
+\begin{enumerate}
+  \item \textbf{Red de similitud} (4.2): cada paper conectado con sus k vecinos más parecidos
+        por coseno \textbf{en 768D} (el espacio real, no el mapa 2D — Apunte 12). Con umbral,
+        para que no salga una ``bola de pelo''.
+  \item \textbf{Red de citas} (4.3): flechas de quién cita a quién. Requiere re-bajar los
+        papers pidiendo el campo \codigo{referenced\_works} que en la Fase 1 no pedimos.
+  \item \textbf{Mapa mental de temas} (4.4): un nodo por subtema, aristas $=$ qué tan
+        relacionados están. La vista presentable.
+\end{enumerate}
+
+\begin{resumen}
+Un grafo son nodos + aristas (con peso y a veces dirección). Los hubs son los clásicos que
+fundamentan; los puentes, las fronteras donde vive la originalidad — y tu propia tesis es un
+puente entre flotación y geología. Construiremos redes de similitud, de citas y de temas.
+\end{resumen}
+
+\end{document}

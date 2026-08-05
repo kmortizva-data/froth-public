@@ -1,0 +1,71 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{02}{APIs and JSON: how you ask a server for data}
+
+\section{The idea in 30 seconds}
+
+Your PC (the \emph{client}) sends a request over the internet to another computer (the
+\emph{server}) and that one answers with data. That is all. An \textbf{API}
+(\emph{Application Programming Interface}) is simply the official counter a service offers
+so that \emph{programs} (not people with a browser) can ask it for things.
+
+In Froth we use the \textbf{OpenAlex} API, a free catalogue with $\sim$250 million academic
+works.
+
+\begin{concepto}{HTTP GET request}
+A request is written as a URL with \textbf{parameters} after the \codigo{?} sign:
+\begin{center}
+\small\codigo{https://api.openalex.org/works?search=lepidolite flotation\&per\_page=25}
+\end{center}
+It reads: ``from the \codigo{works} catalogue, search me \codigo{lepidolite flotation}, give
+me 25 per page''. In Python, the \codigo{requests} library builds and sends this for you:
+\begin{center}
+\codigo{r = requests.get(url, params=\{...\})}
+\end{center}
+\end{concepto}
+
+\begin{concepto}{JSON}
+The server answers in \textbf{JSON}: a text format that looks just like Python dictionaries
+and lists (\codigo{\{"title": "...", "year": 2021\}}). That is why \codigo{r.json()} turns it
+straight into Python objects you can already work with. JSON is \emph{the} data exchange
+language of the internet.
+\end{concepto}
+
+\section{Details of a polite citizen}
+
+Public APIs are a shared resource. Three habits our \codigo{pull.py} already practises:
+
+\begin{enumerate}
+  \item \textbf{Identify yourself} (the \emph{polite pool}): we send our email in the
+        \codigo{mailto} parameter. OpenAlex gives better service to those who show their face.
+  \item \textbf{Do not hammer it}: between one search and the next we wait 0.3 s
+        (\codigo{time.sleep(0.3)}). Thousands of requests per second take services down.
+  \item \textbf{Ask only for what you need}: the \codigo{select} parameter lists the fields we
+        want (title, year, authors...). Less data $=$ faster for everyone.
+\end{enumerate}
+
+\begin{concepto}{the inverted abstract trick}
+OpenAlex does not store the abstract as running text but as an \emph{inverted index}: a
+dictionary \codigo{\{word: [positions where it appears]\}}. It is a real quirk of this API
+(they do it for legal and efficiency reasons). Our \codigo{\_reconstruct\_abstract()}
+function puts it back together: it places each word at its position and joins them. First
+example in the project of the fact that \textbf{real data arrives ``dirty''} and has to be
+worked on.
+\end{concepto}
+
+\begin{practica}
+Paste this URL into your browser (an API answers there too) and look at the raw JSON:
+\begin{center}
+\small\codigo{https://api.openalex.org/works?search=lepidolite\%20flotation\&per\_page=2}
+\end{center}
+Look for the \codigo{title}, \codigo{publication\_year} and
+\codigo{abstract\_inverted\_index} fields in the response.
+\end{practica}
+
+\begin{resumen}
+An API is a counter for programs: you send a URL with parameters, they answer JSON, and
+\codigo{requests} $+$ \codigo{r.json()} turn it into Python dictionaries.
+\end{resumen}
+
+\end{document}

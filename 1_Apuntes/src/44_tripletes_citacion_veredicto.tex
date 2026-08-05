@@ -1,0 +1,115 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{44}{Tripletes de citación: entrenar como SPECTER --- y el veredicto invertido}
+
+\section{Glosario en palabras simples}
+
+\begin{itemize}
+  \item \textbf{Fine-tuning}: tomar un modelo ya entrenado (SPECTER) y darle un
+        ``curso de especialización'' con datos de TU dominio.
+  \item \textbf{Tripleta}: un ejemplo de entrenamiento con 3 piezas: \emph{ancla} (un
+        paper), \emph{positivo} (uno que debe quedar CERCA) y \emph{negativo} (uno que
+        debe quedar LEJOS).
+  \item \textbf{Hard negative}: un negativo DIFÍCIL --- se parece al ancla pero no es lo
+        que buscas. Enseña mucho más que un negativo obvio.
+  \item \textbf{Época}: una pasada completa por todos los ejemplos de entrenamiento.
+  \item \textbf{DBCV}: nota de calidad de un clustering por densidad ($-1$ a $1$):
+        premia grupos densos por dentro y bien separados entre sí.
+  \item \textbf{Doble ciego}: evaluar sin saber qué opción es cuál, para que el juicio
+        no se contamine.
+\end{itemize}
+
+\section{La pregunta que hiciste}
+
+\emph{``¿Deberíamos poder mejorar el fine-tune, o SPECTER es perfecto?''} La respuesta
+corta: SPECTER no es perfecto, pero nuestros fine-tunes anteriores usaban un método
+débil. v1 y v2 entrenaban con pares (título $\leftrightarrow$ abstract): eso solo enseña
+``los títulos van con sus abstracts'', y arrastra todo al centro de masa del corpus ---
+por eso v2 (3$\times$ datos) NO superó a v1 (apunte 41). El SPECTER original se entrena
+distinto: con \textbf{tripletes de citación} --- si el paper A cita al B, B debe quedar
+cerca de A; un paper que A no cita debe quedar lejos.
+
+\section{Mini-ejemplo de juguete}
+
+Ancla: ``Flotación de micas con colectores catiónicos''. Positivo: el paper de colectores
+que ELLA CITA. Hard negative: un paper citado por el positivo pero NO por el ancla (a dos
+saltos: pariente del pariente, pero no tuyo). En cada paso, el entrenamiento MIDE las
+distancias y empuja: positivo un poco más cerca, negativo un poco más lejos. Repite
+100.000 veces y el espacio entero se reorganiza según quién-cita-a-quién.
+
+La cosecha sin techo hizo posible esto a escala: de 833 tripletes (corpus viejo) a
+\textbf{150.885} (100.190 con hard negative) --- 181$\times$ más señal, porque con
+190.000 papers muchas referencias caen DENTRO del corpus.
+
+\section{El entrenamiento (y sus perillas medidas)}
+
+Primer intento: 2 épocas $\times$ secuencias de 512 tokens $=$ 17 horas estimadas en tu
+RTX 5060 (3,2 s/paso, medido). Decisión tuya: 1 época + 256 tokens (los abstracts
+$\sim$200 tokens caben casi enteros) + checkpoints cada 1.000 pasos (lección del apunte
+42: una interrupción cuesta minutos, no todo). Resultado: 3,4 pasos/segundo --- terminó
+en $\sim$45 minutos. El modelo: \texttt{specter-mineral-v3}.
+
+\section{El veredicto en dos rondas}
+
+\textbf{Ronda 1 --- la métrica (DBCV, 22 corpus limpios, muestra fija de 1.500):}
+
+\begin{center}
+\begin{tabular}{lcc}
+ & gana a base & delta medio \\
+\hline
+v1 (pares, chico)   & 14/22 & $+0.013$ \\
+v2 (pares, grande)  & 9/22  & $-0.022$ \\
+v3 (citación)       & 12/22 & $\mathbf{+0.023}$ \\
+v3 vs v2 directo    & 13/22 & $+0.046$ \\
+\end{tabular}
+\end{center}
+
+Tu pregunta quedó respondida: el MÉTODO correcto gana donde la CANTIDAD falló (v2 pierde
+contra base; v3 es el único con mejora media clara). Y un hallazgo extra: en los corpus
+sucios viejos v1 ganaba 16/22 con $+0.093$; al limpiar, TODAS las ventajas se encogieron
+--- parte de la ``mejora'' anterior era saber agrupar la basura.
+
+\textbf{Ronda 2 --- el experto (tú, doble ciego, 4 mapas anónimos):} rankeaste
+B$>$D$>$C$>$A\ldots{} que al revelar la llave resultó ser \textbf{v1 $>$ v2 $>$ base $>$
+v3}. ¡El ranking casi ESPEJO de la métrica! El favorito del DBCV (v3, 0.377) fue tu
+último lugar.
+
+\begin{concepto}{geometría $\neq$ narrativa}
+El DBCV mide si los grupos son densos y separados (geometría). Tú mides si el mapa
+CUENTA la historia del campo (narrativa). v3 aprendió de citas, así que agrupa
+\emph{comunidades de citación} --- quién cita a quién: escuelas, métodos, revistas ---
+que forman blobs preciosos para la métrica pero no siempre coinciden con TEMAS legibles.
+v1, con su ajuste suave, conserva la organización semántica que un experto lee.
+\end{concepto}
+
+\section{Las decisiones (tuyas, como juez)}
+
+\begin{itemize}
+  \item \textbf{Producción $\to$ v1}: lo elegiste a ciegas DOS veces (2026-07-12 y
+        2026-07-16) y gana a base 14/22. Tu instalación usa v1 local; la versión pública
+        cae automáticamente a SPECTER de fábrica (sin fricción, sin descargas manuales).
+  \item \textbf{v3 no se bota --- se re-propósito}: su espacio ``citacional'' es justo la
+        señal que necesita el futuro modo semilla (``papers similares a ESTE'', estilo
+        ResearchRabbit): ahí las comunidades de citación SON lo que buscas.
+\end{itemize}
+
+\begin{ojo}
+Si solo hubiéramos mirado la métrica, habríamos puesto en producción el modelo que el
+experto lee PEOR. Si solo hubiéramos mirado al experto, no sabríamos POR QUÉ v3 agrupa
+raro (ni que es oro para otra tarea). Máquina propone, experto valida, y las dos
+miradas juntas valen más que cualquiera sola.
+\end{ojo}
+
+\begin{resumen}
+La receta real de SPECTER (tripletes de citación + hard negatives) aplicada a TUS
+190.000 papers: 150.885 tripletes, 45 min de GPU, v3. La métrica lo corona ($+0.023$
+sobre base, único positivo claro; método $>$ cantidad confirmado); tu doble ciego lo
+manda de último y corona a v1 --- ranking espejo. Lección doble: (1) el método de
+entrenamiento importa más que el volumen de datos; (2) la calidad geométrica no es
+calidad narrativa: elige el modelo según la TAREA (v1 para mapas legibles, v3 como
+candidato para similitud por citación). ``No mejora para esto'' también es resultado
+--- y encontrarle su tarea correcta, también.
+\end{resumen}
+
+\end{document}

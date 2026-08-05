@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{28}{Multi-source connectors: your institutional account joins the game}
+
+\section{Why OpenAlex alone is not enough}
+
+OpenAlex is huge ($\sim$250M works) but it does not have everything, and sometimes it is
+missing abstracts. The idea: let the user \textbf{connect their own accounts} (``Connect with
+Google'' style) and see papers the free database does not bring.
+
+\section{The connectors (froth/sources.py)}
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Source} & \textbf{Requires} & \textbf{What it adds} \\
+\hline
+OpenAlex & nothing (key optional) & the BASE: abstracts $+$ references \\
+Crossref & just an email & massive publisher metadata \\
+Semantic Scholar & FREE key (optional) & abstracts $+$ open access PDFs \\
+Scopus (Elsevier) & institutional key & Elsevier's curated catalogue \\
+ResearchGate & \multicolumn{2}{l}{\textbf{NO}: no public API; its ToS forbids scraping} \\
+\end{tabular}
+\end{center}
+
+Design principles:
+\begin{itemize}
+  \item \textbf{OpenAlex rules}: it is the preferred record (the richest); the extras only ADD
+        papers we did not have.
+  \item \textbf{Dedup by DOI and then by normalised title}: the same paper arrives through
+        several sources and must count once.
+  \item \textbf{Soft failure}: if a source is down or rate-limits you, it says so and the pull
+        carries on with the others. A connector never takes the harvest down.
+  \item \textbf{The keys are yours and local}: they live in \codigo{.froth\_keys}
+        (gitignored). On the public website they will live only in your browser session.
+        Froth never holds other people's keys on a server.
+\end{itemize}
+
+\section{The first multi-source harvest (real numbers)}
+
+\begin{itemize}
+  \item Crossref: 227 raw results $\rightarrow$ the dedup recognised \textbf{58 duplicates} of
+        OpenAlex and contributed \textbf{169 new ones} (after the abstract filter: corpus 126
+        $\rightarrow$ \textbf{157}).
+  \item Semantic Scholar without a key: immediate rate limit $\rightarrow$ it \textbf{failed
+        softly} exactly as designed (with the free key it is stable).
+  \item The enlarged corpus revealed an \textbf{emerging subtopic}: bubble and fine-particle
+        physics ($+$ bastnaesite), buried before, now a cluster of its own. More data
+        $\rightarrow$ more resolution on the map.
+  \item The relevance filter discarded only 6: the extra harvest came in clean. The
+        self-washing of Note 17 scaled without being touched.
+\end{itemize}
+
+\begin{resumen}
+sources.py adds Crossref/S2/Scopus to OpenAlex with DOI-then-title dedup and soft failure; the
+keys are local and the user's (the ``Connect institutional account'' panel). First harvest:
+$+31$ net papers and a new subtopic emerged. ResearchGate is out by design (no legal API).
+\end{resumen}
+
+\end{document}

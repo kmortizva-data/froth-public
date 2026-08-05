@@ -1,0 +1,72 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{16}{El bubble map interactivo (Plotly) y el truco del slider}
+
+\section{Qué construimos}
+
+El entregable estrella de la Fase 3: el \textbf{mapa de burbujas interactivo} de tus 126
+papers. Existe en dos formas, alimentadas por el mismo código:
+\begin{enumerate}
+  \item \codigo{3\_Resultados/topic\_map.html} --- archivo autocontenido: doble clic y se abre
+        en cualquier navegador, sin servidor. Compartible.
+  \item La pestaña \textbf{Topic map} de tu web app (\codigo{app.py}), con controles en vivo.
+\end{enumerate}
+
+Qué se ve: un punto por paper, un color por subtema (geología azul, flotación verde,
+economía/ajeno naranja, ruido gris), tamaño $=$ citas, la etiqueta de cada subtema flotando
+sobre su nube, y al pasar el mouse: título, autores, año, citas.
+
+\begin{concepto}{Plotly}
+Librería de gráficos \textbf{interactivos}: en vez de una imagen fija (matplotlib), produce
+HTML+JavaScript con zoom, pan, tooltips y leyenda clicable ``gratis''. Por eso el mapa se
+puede guardar como archivo y abrirse en cualquier lado: el navegador hace el trabajo.
+\end{concepto}
+
+\begin{concepto}{una figura, dos caras (arquitectura)}
+La función \codigo{bubble\_figure()} en \codigo{froth/visualize.py} construye la figura, y
+DOS clientes la reutilizan: \codigo{plot\_bubbles()} la guarda como HTML, y \codigo{app.py}
+la muestra en Streamlit. Si mañana mejoras el mapa, mejora en los dos sitios a la vez.
+Principio general: \emph{el motor no se duplica; se envuelve}.
+\end{concepto}
+
+\section{El truco del slider de granularidad}
+
+La web app tiene un slider ``min papers per subtopic'' que re-agrupa el mapa \textbf{al
+instante}. ¿Cómo puede ser tan rápido, si el pipeline tarda?
+
+\begin{concepto}{separar lo lento de lo rápido}
+El pipeline tiene dos partes muy distintas:
+\begin{itemize}
+  \item \textbf{Lenta}: UMAP (acomodar 126 puntos desde 768D). Se calcula UNA vez y se cachea.
+  \item \textbf{Rápida}: HDBSCAN sobre los puntos 2D ya acomodados (milisegundos) + re-etiquetar.
+\end{itemize}
+La clave: la granularidad \textbf{no afecta a UMAP}, solo a HDBSCAN. Así que mover el slider
+solo repite la parte barata. Identificar qué se puede cachear y qué debe recalcularse es una
+habilidad central de ingeniería de datos --- la acabas de usar.
+\end{concepto}
+
+\begin{ojo}
+La granularidad es una \textbf{decisión de lectura}, no una verdad: con valor bajo verás
+muchos subtemas pequeños (más detalle, más fragmentación); con valor alto, pocos grandes
+(más síntesis). No existe ``el número correcto de clusters'' — existe el que mejor cuenta la
+historia para tu propósito. Por eso es un slider tuyo y no una constante escondida.
+\end{ojo}
+
+\section{Dónde estamos frente a la competencia}
+
+Con este mapa alcanzamos la \textbf{paridad} visual/interactiva (hover, zoom, filtros, tamaño
+por citas) con Connected Papers, Litmaps o VOSviewer. Y ya tenemos diferenciadores que ellos
+no: mapa por \emph{contenido} (no citas), subtemas auto-nombrados, granularidad en vivo,
+ruido separable, búsqueda semántica integrada y todo open-source. Los diferenciadores
+estrella (gaps + borrador de review + módulo tarea/PDFs) llegan en las Fases 4--5. La tabla
+completa vive en \codigo{CLAUDE.md}.
+
+\begin{resumen}
+Plotly convierte el topic map en un mapa interactivo con dos caras (HTML compartible y
+pestaña de la app) desde una sola función; el slider de granularidad es instantáneo porque
+solo repite la parte barata (HDBSCAN 2D), no la cara (UMAP). Paridad con la competencia:
+lograda; los diferenciadores grandes vienen en F4--F5.
+\end{resumen}
+
+\end{document}

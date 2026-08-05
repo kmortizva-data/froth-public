@@ -1,0 +1,72 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{02}{APIs y JSON: cómo se piden datos a un servidor}
+
+\section{La idea en 30 segundos}
+
+Tu PC (el \emph{cliente}) le manda una petición por internet a otra computadora
+(el \emph{servidor}) y esta responde con datos. Eso es todo. Una \textbf{API}
+(\emph{Application Programming Interface}) es simplemente la ventanilla oficial que un
+servicio ofrece para que \emph{programas} (no personas con navegador) le pidan cosas.
+
+En Froth usamos la API de \textbf{OpenAlex}, un catálogo gratuito con $\sim$250 millones
+de trabajos académicos.
+
+\begin{concepto}{petición HTTP GET}
+Una petición se escribe como una URL con \textbf{parámetros} después del signo \codigo{?}:
+\begin{center}
+\small\codigo{https://api.openalex.org/works?search=lepidolite flotation\&per\_page=25}
+\end{center}
+Se lee: ``del catálogo \codigo{works}, búscame \codigo{lepidolite flotation}, dame 25 por
+página''. En Python, la librería \codigo{requests} construye y envía esto por ti:
+\begin{center}
+\codigo{r = requests.get(url, params=\{...\})}
+\end{center}
+\end{concepto}
+
+\begin{concepto}{JSON}
+El servidor responde en \textbf{JSON}: un formato de texto con la misma pinta que los
+diccionarios y listas de Python (\codigo{\{"title": "...", "year": 2021\}}).
+Por eso \codigo{r.json()} lo convierte directamente en objetos de Python con los que ya
+puedes trabajar. JSON es \emph{el} idioma de intercambio de datos en internet.
+\end{concepto}
+
+\section{Detalles de ciudadano educado}
+
+Las APIs públicas son un recurso compartido. Tres costumbres que nuestro \codigo{pull.py}
+ya practica:
+
+\begin{enumerate}
+  \item \textbf{Identifícate} (\emph{polite pool}): mandamos nuestro email en el parámetro
+        \codigo{mailto}. OpenAlex da mejor servicio a quien da la cara.
+  \item \textbf{No bombardees}: entre búsqueda y búsqueda esperamos 0.3 s
+        (\codigo{time.sleep(0.3)}). Miles de peticiones por segundo tumban servicios.
+  \item \textbf{Pide solo lo que necesitas}: el parámetro \codigo{select} lista los campos
+        que queremos (título, año, autores...). Menos datos $=$ más rápido para todos.
+\end{enumerate}
+
+\begin{concepto}{el truco del abstract invertido}
+OpenAlex no guarda el resumen como texto corrido sino como un \emph{índice invertido}:
+un diccionario \codigo{\{palabra: [posiciones donde aparece]\}}. Es una curiosidad real de
+esta API (lo hacen por temas legales y de eficiencia). Nuestra función
+\codigo{\_reconstruct\_abstract()} lo vuelve a montar: coloca cada palabra en su posición
+y las une. Primer ejemplo del proyecto de que \textbf{los datos reales vienen ``sucios''}
+y hay que trabajarlos.
+\end{concepto}
+
+\begin{practica}
+Pega esta URL en tu navegador (¡una API también responde ahí!) y mira el JSON crudo:
+\begin{center}
+\small\codigo{https://api.openalex.org/works?search=lepidolite\%20flotation\&per\_page=2}
+\end{center}
+Busca los campos \codigo{title}, \codigo{publication\_year} y
+\codigo{abstract\_inverted\_index} en la respuesta.
+\end{practica}
+
+\begin{resumen}
+Una API es una ventanilla para programas: mandas una URL con parámetros, te responden
+JSON, y \codigo{requests} + \codigo{r.json()} lo convierten en diccionarios de Python.
+\end{resumen}
+
+\end{document}

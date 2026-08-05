@@ -1,0 +1,101 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+\begin{document}
+\cabecera{08}{Similitud coseno: medir qué tan parecidos son dos papers}
+
+\section{El problema}
+
+Ya tienes 126 puntos (vectores) en el mapa del significado. Pregunta natural: dados dos
+papers, ¿cómo pone la computadora un número a ``qué tan parecidos son''? Con la
+\textbf{similitud coseno}.
+
+\section{La idea: el ángulo entre dos flechas}
+
+Cada vector es una \textbf{flecha} que sale del origen y apunta hacia la posición del paper.
+Para comparar dos papers miramos el \textbf{ángulo} entre sus flechas:
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+  % caso parecido
+  \draw[->,gray] (0,0) -- (3.2,0);
+  \draw[->,gray] (0,0) -- (0,3.2);
+  \draw[->,litblue,very thick] (0,0) -- (2.6,2.2);
+  \draw[->,litgreen,very thick] (0,0) -- (2.9,1.6);
+  \draw (1.0,0.62) arc (32:40:1.2);
+  \node at (1.7,0.55) {\small ángulo chico};
+  \node[align=center] at (1.6,-0.8) {\small\textbf{parecidos}\\[-2pt]\small coseno $\approx 1$};
+  % separacion
+  \node at (4.6,1.5) {\Large $\Rightarrow$};
+  % caso distinto
+  \begin{scope}[xshift=6cm]
+    \draw[->,gray] (0,0) -- (3.2,0);
+    \draw[->,gray] (0,0) -- (0,3.2);
+    \draw[->,litblue,very thick] (0,0) -- (2.9,0.5);
+    \draw[->,litorange,very thick] (0,0) -- (0.5,2.9);
+    \node[align=center] at (1.6,-0.8) {\small\textbf{distintos}\\[-2pt]\small coseno $\approx 0$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\begin{concepto}{similitud coseno}
+Es el \textbf{coseno del ángulo} entre dos vectores. Da un número fácil de leer:
+\begin{itemize}
+  \item Flechas casi alineadas (ángulo pequeño) $\rightarrow$ coseno \textbf{cercano a 1}
+        $\rightarrow$ mismo tema.
+  \item Flechas perpendiculares (90$^\circ$) $\rightarrow$ coseno \textbf{cercano a 0}
+        $\rightarrow$ sin relación.
+\end{itemize}
+Para embeddings de texto el valor suele caer entre 0 y 1.
+\end{concepto}
+
+\begin{ojo}
+¿Por qué el \emph{ángulo} y no la \emph{distancia} entre las puntas? Porque lo que importa
+es \textbf{hacia dónde apunta} el significado, no qué tan larga es la flecha. Dos papers del
+mismo tema, uno con abstract largo y otro corto, tendrán flechas de distinto ``tamaño'' pero
+apuntando al mismo lado: el ángulo los reconoce como iguales; la distancia recta se dejaría
+engañar por el tamaño.
+\end{ojo}
+
+\section{La prueba con tus papers (números reales)}
+
+Tomamos el paper \emph{``Enrichment of Lepidolite via Flotation''} y calculamos su coseno
+contra los otros 125. Esto salió:
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Coseno} & \textbf{Paper} & \textbf{¿Tiene sentido?} \\
+\hline
+0.942 & Selective Inhibition ... Flotation of Lepidolite & sí: mismo tema \\
+0.941 & Froth Flotation of Lepidolite --- A Review & sí: mismo tema \\
+0.932 & Flotation Collectors for Lepidolite Mineral & sí: mismo tema \\
+\hline
+0.511 & ...Radio Resources for Multicell Mobile & no: telecomunicaciones \\
+0.507 & Adrienne Rich and the Poetry... & no: poesía \\
+0.495 & Theodore Beza... Peace in France 1572 & no: historia \\
+\end{tabular}
+\end{center}
+
+Los papers de flotación de lepidolita salieron con coseno $\sim$0.94 (casi idénticos en
+tema), y el ruido off-topic que se coló en la Fase 1 quedó en $\sim$0.50 (lejos). El sistema
+los ordenó bien \textbf{sin saber nada de minería}: solo por el significado de los abstracts.
+
+\begin{concepto}{la herramienta: \codigo{cosine\_similarity} de scikit-learn}
+No calculamos el ángulo a mano. \codigo{sklearn.metrics.pairwise.cosine\_similarity} toma
+vectores y devuelve los cosenos. Le pasamos un paper contra la matriz de los 126 y obtuvimos
+las 126 similitudes de un golpe.
+\end{concepto}
+
+\section{Para qué sirve esto}
+
+Este número es el ladrillo del \textbf{buscador semántico} (paso siguiente): para encontrar
+los papers más parecidos a una frase, la convertimos en vector y nos quedamos con los de
+\emph{mayor} coseno. Y en la Fase 3, la misma idea de ``quién está cerca de quién'' es la que
+forma las burbujas de subtemas.
+
+\begin{resumen}
+La similitud coseno mide el ángulo entre dos vectores: $\approx 1$ mismo tema, $\approx 0$ sin
+relación. Con tus papers, flotación-vs-flotación dio 0.94 y flotación-vs-ruido 0.50: funciona.
+\end{resumen}
+
+\end{document}

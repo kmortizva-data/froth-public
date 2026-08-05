@@ -1,0 +1,61 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{13}{UMAP in action: the first map of your 126 papers}
+
+\section{What we did}
+
+We ran UMAP for real on the $126 \times 768$ matrix and out came a $126 \times 2$ table: one
+(x, y) coordinate per paper. We saved them in \codigo{2\_Datos/embeddings/umap\_2d.npy} and
+drew the first scatter plot (it is in \codigo{3\_Resultados/umap\_first\_look.png}).
+
+\textbf{The important part of the result:} without being told anything about mining,
+\emph{structures} are already visible: a big cloud on the left, an arm at the top right, a
+diagonal strip at the bottom with a tight clump in the corner. Those are (probably) your
+subtopics waiting to be named. The next step (HDBSCAN) will delimit them formally.
+
+\section{The three decisions in the code (and why)}
+
+\begin{concepto}{metric="cosine", measuring with the same yardstick}
+UMAP needs to decide who each point's ``neighbours'' are, and for that it measures distances.
+We told it to measure them with \textbf{cosine similarity}, exactly the same yardstick as
+Phase 2 (Note 08). If Phase 2 compares papers by cosine and UMAP used a different measure, the
+map would tell a different story from the search engine. Consistency above all.
+\end{concepto}
+
+\begin{concepto}{random\_state=42, reproducibility}
+UMAP has internal randomness (where the arrangement starts from). With no fixed seed, each run
+would give a \emph{slightly} different map: same groups, different positions. Fixing
+\codigo{random\_state=42} means anyone running your code gets \textbf{the same map}. In
+science (and in your thesis) that is called \emph{reproducibility} and it is sacred.
+(The 42 is a programmers' in-joke; any fixed number works.)
+\end{concepto}
+
+\begin{concepto}{n\_components=2, how many output dimensions}
+We asked for 2 dimensions because the goal is to \emph{draw}. You can reduce to 5 or 10
+(sometimes useful for clustering); we will explore that if it is needed.
+\end{concepto}
+
+\begin{ojo}
+In the scatter plot we removed the numbers on the axes \textbf{on purpose}. After Note 12 you
+already know why: in UMAP the axes mean nothing. If one day you see a UMAP map with numbered,
+interpreted axes (``the higher the X, the more of such and such''), distrust the author.
+\end{ojo}
+
+\section{How to read your first map}
+
+\begin{itemize}
+  \item \textbf{Dense clouds} $=$ groups of papers talking about the same thing (future clusters).
+  \item \textbf{Loose points / bridges} $=$ papers that mix topics or do not fit (candidates
+        for ``noise'' in HDBSCAN).
+  \item \textbf{Overall shape} (arm, strip, clump): it suggests subtopics with different
+        cohesion. A tight clump is a very specific topic; a broad cloud, a general one.
+\end{itemize}
+
+\begin{resumen}
+UMAP turned 768 dimensions into a reproducible 2D map (fixed seed) measuring neighbours by
+cosine (the same yardstick as always), and the clouds appeared on their own: they are the
+subtopics HDBSCAN will delimit in the next step.
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,69 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{10}{Jupyter notebooks: your interactive search engine}
+
+\section{What a notebook is and why it matters}
+
+\begin{concepto}{Jupyter notebook}
+A \textbf{notebook} (a \codigo{.ipynb} file) is a document made of \textbf{cells} you can run
+one at a time. There are two kinds of cell: \textbf{code} (Python that runs) and \textbf{text}
+(explanations in Markdown). You run a cell with \textbf{Shift + Enter}.
+\end{concepto}
+
+The point of it: you try something, you see the result right underneath, you change something
+and run again, without restarting the whole program. That is why it is \textbf{the}
+exploration tool in data science. On top of that, a well-made notebook is an excellent
+portfolio piece: it tells a story (text $+$ code $+$ results) that anyone can follow.
+
+\section{Your notebook: \codigo{4\_Notebooks/01\_buscador\_semantico.ipynb}}
+
+It wraps the \codigo{most\_similar()} function in a comfortable interface:
+\begin{enumerate}
+  \item A \textbf{setup} cell loads the 126 papers and their vectors.
+  \item A \textbf{query} cell where you change the \codigo{my\_query} variable to whatever
+        phrase you want, and run.
+  \item The result shows up as a \textbf{table} (score, title, year, citations), because
+        \codigo{most\_similar} returns a DataFrame and Jupyter renders those nicely.
+\end{enumerate}
+
+\begin{practica}
+Open it yourself and validate as the expert. In PowerShell, inside the project folder:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m jupyter notebook "4\_Notebooks\textbackslash 01\_buscador\_semantico.ipynb"}
+\end{enumerate}
+It opens in your browser. Run the cells with Shift+Enter, change \codigo{my\_query} and try
+phrases from your field. \textbf{You are the judge} of whether the papers that come out are
+the right ones: that is the validation that closes Phase 2.
+\end{practica}
+
+\begin{ojo}
+The notebook starts with \codigo{sys.path.insert(...)} pointing at the project folder. That is
+so Python finds the \codigo{froth} package even though the notebook lives in the
+\codigo{4\_Notebooks/} subfolder. Without that line, \codigo{from froth import embed} would
+fail.
+\end{ojo}
+
+\section{Notebook vs.\ code (\codigo{.py}): when to use which?}
+
+\begin{center}
+\begin{tabular}{p{6.5cm} p{6.5cm}}
+\textbf{Notebook (\codigo{.ipynb})} & \textbf{Module (\codigo{.py})} \\
+\hline
+Exploring, trying ideas, teaching, presenting results. & Stable code that gets reused
+(the ``engine'', like \codigo{embed.py}). \\
+Read top to bottom like a story. & Imported from other files. \\
+\end{tabular}
+\end{center}
+A healthy rule: explore in the notebook; when something works and you are going to reuse it,
+move it to a \codigo{.py} in the package. Your search engine already lives in
+\codigo{embed.py}; the notebook only \emph{uses} it.
+
+\begin{resumen}
+A notebook is a document of runnable cells (Shift+Enter), ideal for exploring and presenting.
+Yours wraps \codigo{most\_similar} so you can type queries and see the papers in a table: use
+it to validate Phase 2 with your expert judgement.
+\end{resumen}
+
+\end{document}

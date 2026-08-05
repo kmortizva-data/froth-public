@@ -1,0 +1,66 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{30}{The birth of specter-mineral: your first real training run}
+
+\section{What happened (in 83 seconds)}
+
+Your RTX 5060 took generic SPECTER and \textbf{fine-tuned} it with the $\sim$1,250
+title$\leftrightarrow$abstract pairs of the master corpus: 2 epochs, 160 steps, batches of 16.
+The result lives in \codigo{models/specter-mineral}, an embedding model that speaks the dialect
+of mineral processing. On CPU it would have been hours; on your GPU, 83 seconds.
+
+\section{The concepts you have just used}
+
+\begin{concepto}{fine-tuning $\neq$ training from scratch}
+We did not build a new model: we took SPECTER's weights (which already know how to ``read
+papers'') and \textbf{nudged them gently} towards your domain. Like a generalist geologist
+taking a specialisation, they do not go back to primary school.
+\end{concepto}
+
+\begin{concepto}{the elegant move: self-supervision with MNRL}
+Training usually demands human labels (``these two texts are alike''). We labelled NOTHING. The
+trick: \textbf{MultipleNegativesRankingLoss}. In each batch of 16 papers, a paper's title must
+end up closer to \emph{its own} abstract than to the other 15 in the batch. Free positives (a
+paper's title and abstract talk about the same thing) and free negatives (the rest of the
+batch). A flat corpus becomes a training dataset without lifting a finger.
+\end{concepto}
+
+\begin{concepto}{the vocabulary of training}
+\begin{itemize}
+  \item \textbf{loss}: the number measuring ``how wrong the model is''; training $=$ pushing the
+        weights to bring it down.
+  \item \textbf{step}: processing one batch and adjusting the weights once. You saw ``160 steps''.
+  \item \textbf{epoch}: one complete pass over the whole dataset. We did 2.
+  \item \textbf{warmup}: the first steps with very gentle adjustments, so as not to wreck what
+        the model already knew.
+  \item \textbf{mixed precision (amp)}: arithmetic in lower-precision numbers where it does not
+        matter, part of the reason for the speed on GPU.
+\end{itemize}
+\end{concepto}
+
+\begin{ojo}
+\textbf{The stumbles teach too}: the training failed TWICE before it started. First
+\codigo{datasets} was missing, then \codigo{accelerate} (the Hugging Face Trainer's kit).
+Ecosystem lesson: in modern ML, ``installing the library'' is rarely enough; the training stack
+is its own beast. Both went into requirements.txt for good. And before that: pip refused to
+swap torch CPU$\rightarrow$CUDA because ``the version was already satisfied'' (same number,
+different variant), solved with \codigo{--force-reinstall --no-deps}.
+\end{ojo}
+
+\section{How we judge whether it was worth it (6.6)}
+
+A new model is not better just for existing. \codigo{froth/compare.py} puts BOTH models
+through the same exam over the 22 topics: same corpora, same UMAP (fixed seed), granularity
+chosen by DBCV. Who produces more valid clusters? It also exports a \textbf{blind test}: two
+A/B cluster listings with the key hidden, so the expert (you) can judge without knowing which
+is which. If specter-mineral does not win, that is ALSO an honest and publishable result.
+
+\begin{resumen}
+Fine-tuning $=$ pushing existing weights towards your domain; MNRL turns the corpus into a
+dataset with no labelling (your title must love your abstract more than other people's); 83s on
+your GPU after two dependency stumbles. The verdict comes from DBCV over 22 topics and your
+blind test, not from enthusiasm.
+\end{resumen}
+
+\end{document}

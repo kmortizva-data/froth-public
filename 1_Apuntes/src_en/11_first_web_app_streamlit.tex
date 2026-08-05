@@ -1,0 +1,77 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{11}{Your first web app with Streamlit}
+
+\section{What we built}
+
+A \textbf{web page that runs on your own PC}: a search box where you type a phrase and see the
+most relevant papers in a table. It is the \codigo{app.py} file at the project root, and
+inside it uses the \emph{same} \codigo{most\_similar()} from Phase 2. No new engine: just a
+nice face on top.
+
+\begin{concepto}{Streamlit}
+\textbf{Streamlit} is a library that turns a Python script into an interactive website without
+you having to know HTML, CSS or JavaScript. You write \codigo{st.title(...)},
+\codigo{st.text\_input(...)}, \codigo{st.dataframe(...)} and Streamlit draws the page. Every
+time the user changes something (types, moves the slider), Streamlit \textbf{re-runs the
+script} from top to bottom and refreshes the view.
+\end{concepto}
+
+\section{How to start it}
+
+\begin{practica}
+From the project folder, in PowerShell:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m streamlit run app.py}
+\end{enumerate}
+A tab opens by itself at \codigo{http://localhost:8501}. Type a query, move the results slider
+and look at the table. To shut it down: \textbf{Ctrl + C} in PowerShell.
+\end{practica}
+
+\begin{ojo}
+``localhost'' means ``this very machine''. The site is NOT on the internet: it lives and runs
+on your PC. That is why you pay for no domain and no hosting. For others to use it: either
+they download the repo and run it the same way, or you upload it for free to Streamlit
+Community Cloud / Hugging Face Spaces (see below).
+\end{ojo}
+
+\section{Two tricks in the code worth understanding}
+
+\begin{concepto}{cache: do not reload the heavy things on every click}
+Since Streamlit re-runs the script on every interaction, loading the 126 papers and their
+vectors each time would be slow. The \codigo{@st.cache\_resource} decorator on the
+\codigo{load\_data()} function makes them load \textbf{once} and be reused. The SPECTER model
+is cached the same way (a global variable in \codigo{embed.py}).
+\end{concepto}
+
+On top of that, \codigo{app.py} imports \codigo{from froth import config, embed}: the website
+is only a client of the engine you already have. If tomorrow you improve
+\codigo{most\_similar}, the website improves by itself.
+
+\section{How it gets shared (your portfolio goal)}
+
+\begin{itemize}
+  \item \textbf{Download and run:} you push the repo to GitHub; anyone does \codigo{git clone},
+        installs \codigo{requirements.txt} and runs it on their PC. Free. (GitHub stores the
+        code, it does not run it for the visitor.)
+  \item \textbf{Free public link (optional):} Streamlit Community Cloud or Hugging Face Spaces
+        host the app for free and give you a public URL. No paid domain.
+\end{itemize}
+
+\section{What comes next (the vision)}
+
+This app is the \textbf{Thesis module}: input $=$ a title or phrase. Later comes the
+\textbf{Task/Research module}: you attach instruction PDFs and write what you are being asked
+for, and the same engine returns the relevant papers. And in Phase 3, on top of the list, the
+subtopic \textbf{bubble map} will appear right here.
+
+\begin{resumen}
+Streamlit turns your script into a local website (localhost) without knowing HTML.
+\codigo{app.py} wraps \codigo{most\_similar} in a search box; you start it with
+\codigo{streamlit run app.py}, share it via GitHub or free hosting, and it is the base of the
+two future modules.
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,96 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{00}{El mapa del proyecto (léeme primero)}
+
+\section{Qué estamos construyendo y por qué}
+
+\textbf{Froth} es una herramienta que, dado un tema científico, descarga cientos de
+papers, los ``entiende'' por su contenido y dibuja un \emph{mapa de subtemas}: burbujas
+de papers agrupados por significado, conexiones entre grupos, y zonas vacías (los
+\emph{gaps} donde puedes aportar algo nuevo en tu tesis).
+
+El proyecto tiene un doble objetivo, y los dos pesan igual:
+\begin{enumerate}
+  \item \textbf{Aprender Machine Learning de verdad}, pieza a pieza, construyendo.
+  \item \textbf{Tener un producto útil} para literature reviews completos (no el
+        clásico ``5 papers que confirman lo que ya pensaba'').
+\end{enumerate}
+
+\begin{concepto}{pipeline (tubería)}
+Todo el sistema es una \textbf{cadena de 5 pasos} donde la salida de uno es la entrada
+del siguiente:
+\begin{center}
+\codigo{[1] PULL $\rightarrow$ [2] EMBED $\rightarrow$ [3] REDUCE $\rightarrow$ [4] CLUSTER $\rightarrow$ [5] VISUALIZE}
+\end{center}
+\begin{enumerate}
+  \item \textbf{Pull}: bajar papers (título, resumen, autores...) desde bases de datos públicas.
+  \item \textbf{Embed}: convertir cada resumen en un \emph{vector} (lista de números que captura su significado).
+  \item \textbf{Reduce}: aplastar esos vectores de $\sim$768 dimensiones a 2 para poder dibujarlos.
+  \item \textbf{Cluster}: agrupar los puntos cercanos $=$ subtemas descubiertos automáticamente.
+  \item \textbf{Visualize}: burbujas, mapa mental, detección de gaps, borrador de review.
+\end{enumerate}
+Cada paso es, a la vez, un concepto de ML que vas a dominar.
+\end{concepto}
+
+\section{El mapa de carpetas (qué es cada cosa y en qué orden mirar)}
+
+Dentro de \codigo{Documents\textbackslash Master Thesis AI\textbackslash} está todo.
+\textbf{Regla de oro:} las carpetas \emph{con número} son tuyas (entra); las \emph{sin
+número} son la maquinaria (no tocar). La chuleta completa está en el archivo
+\codigo{0\_LEEME\_PRIMERO.md} de la raíz.
+
+\textbf{Tuyas (numeradas):}
+\begin{enumerate}
+  \item \codigo{1\_Apuntes/} --- \textbf{tu biblioteca} (estos PDFs). Léelos en orden: 00, 01, 02...
+  \item \codigo{2\_Datos/} --- los datos: \codigo{raw/} (crudos), \codigo{processed/} (tablas
+        limpias), \codigo{embeddings/} (vectores). Se llena solo al correr el pipeline.
+  \item \codigo{3\_Resultados/} --- las salidas visibles: mapas, reviews.
+  \item \codigo{4\_Notebooks/} --- cuadernos de experimentación (Jupyter), cuando lleguen.
+  \item \codigo{5\_Bitacoras/} --- decisiones tomadas y tu diario de aprendizaje.
+\end{enumerate}
+
+\textbf{Maquinaria (sin número, no tocar):}
+\begin{itemize}
+  \item \codigo{froth/} --- \textbf{el código fuente} (el motor). Un archivo por paso del
+        pipeline: \codigo{config.py} (ajustes) $\rightarrow$ \codigo{pull.py} $\rightarrow$
+        \codigo{embed.py} $\rightarrow$ \codigo{cluster.py} $\rightarrow$ \codigo{graph.py}
+        $\rightarrow$ \codigo{gaps.py} $\rightarrow$ \codigo{visualize.py}.
+  \item \codigo{.venv/} --- la burbuja con Python y sus librerías (ver Apunte 01).
+  \item \codigo{tools/} --- el compilador que convierte los apuntes en PDF.
+\end{itemize}
+
+\begin{ojo}
+¿Por qué \codigo{froth/} \textbf{no} lleva número, si dijimos que todo debe estar ordenado?
+Porque Python importa el código por su nombre (\codigo{from froth import pull}) y un nombre
+que empieza por número rompe el lenguaje. El \emph{orden} del pipeline no vive en el nombre
+de la carpeta sino dentro del código (\codigo{froth/\_\_init\_\_.py}). Los apuntes y tus
+carpetas, en cambio, sí van numerados porque nadie los importa: solo se leen.
+\end{ojo}
+
+\section{Las 7 fases, de un vistazo}
+
+\begin{enumerate}
+  \item[\textbf{F0}] \textbf{Cimientos} --- entorno Python, Git, estructura. \emph{(casi cerrada)}
+  \item[\textbf{F1}] \textbf{Pull} --- bajar 200--500 papers de un topic. \emph{(primera versión ya funciona: 126 papers)}
+  \item[\textbf{F2}] \textbf{Embeddings} --- texto $\rightarrow$ vectores; buscador semántico. \emph{(siguiente)}
+  \item[\textbf{F3}] \textbf{Clusters} --- las burbujas de subtemas (UMAP + HDBSCAN + BERTopic).
+  \item[\textbf{F4}] \textbf{Mapa mental} --- grafo de relaciones entre papers y temas.
+  \item[\textbf{F5}] \textbf{Gaps + borrador} --- zonas vacías del mapa y texto estructurado de review.
+  \item[\textbf{F6}] \textbf{Deep learning} --- PyTorch, transformers, afinar tu propio modelo.
+\end{enumerate}
+
+\section{Cómo usar estos apuntes}
+
+Cada vez que aparezca una habilidad o concepto nuevo en el proyecto, se genera un apunte
+PDF numerado que se guarda en \codigo{apuntes/}. Tú solo entras ahí y lees en orden.
+Cada apunte tiene cajas de colores: \textcolor{litblue}{\textbf{Concepto}} (la idea),
+\textcolor{litgreen}{\textbf{Pruébalo tú}} (comandos para teclear tú mismo) y
+\textcolor{litorange}{\textbf{Ojo}} (errores típicos).
+
+\begin{resumen}
+Froth es una tubería de 5 pasos que convierte ``un tema'' en ``un mapa de la literatura'';
+este apunte es tu plano general: carpetas, fases y orden de lectura.
+\end{resumen}
+
+\end{document}

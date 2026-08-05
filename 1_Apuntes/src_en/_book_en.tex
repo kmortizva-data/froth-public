@@ -1,0 +1,3685 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\usepackage{tikz}
+
+% --- Book mode: the notes keep their own look, the volume adds navigation ---
+\setcounter{secnumdepth}{0}  % no global numbering: note 45's sections are not "sections 201..."
+\setcounter{tocdepth}{0}     % the contents list the NOTES, not every heading inside them
+\usepackage{bookmark}        % real PDF bookmarks, one per note
+% hyperref takes its bookmark depth FROM tocdepth, so the line above silently produced a
+% volume with zero bookmarks. The two settings have to be decoupled by hand.
+% Notes are registered one level ABOVE their own headings (part vs section) so the reader's
+% bookmark pane is a tree: 46 notes, each unfolding into its sections, instead of 211 flat
+% entries where a note title looks the same as a heading inside it.
+\hypersetup{bookmarksdepth=1,bookmarksopen=true,bookmarksopenlevel=0,
+            pdftitle={Froth - Machine Learning study notes}}
+\fancyhead[L]{\small\color{litblue}Froth: ML study notes (complete volume)}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries\color{litblue} Froth}\\[6pt]
+{\Large\color{litblue} Machine Learning study notes}\\[2cm]
+{\large Learning by building: 47 notes that came out of a real project}\\[1cm]
+{\normalsize From what an embedding is to why 10,921 papers fit on screen and 1,772 do not.\\
+Every note came from something that actually happened, mistakes included.}\\[2cm]
+{\small\color{litblue} Froth project: semantic mapping of scientific literature}\\[4pt]
+{\small Built on 2026-08-08}
+\vfill
+\end{titlepage}
+\tableofcontents
+\clearpage
+
+\phantomsection
+\addcontentsline{toc}{part}{Note 00 : The project map (read this first)}
+\cabecera{00}{The project map (read this first)}
+
+\section{What we are building, and why}
+
+\textbf{Froth} is a tool that, given a scientific topic, downloads hundreds of papers,
+``understands'' them by their content and draws a \emph{map of subtopics}: bubbles of
+papers grouped by meaning, connections between groups, and empty areas (the \emph{gaps}
+where you can contribute something new in your thesis).
+
+The project has a double goal, and both weigh the same:
+\begin{enumerate}
+  \item \textbf{Actually learn Machine Learning}, piece by piece, by building it.
+  \item \textbf{Have a useful product} for complete literature reviews, not the classic
+        ``5 papers that confirm what I already thought''.
+\end{enumerate}
+
+\begin{concepto}{pipeline}
+The whole system is a \textbf{chain of 5 steps} where the output of one is the input of
+the next:
+\begin{center}
+\codigo{[1] PULL $\rightarrow$ [2] EMBED $\rightarrow$ [3] REDUCE $\rightarrow$ [4] CLUSTER $\rightarrow$ [5] VISUALIZE}
+\end{center}
+\begin{enumerate}
+  \item \textbf{Pull}: download papers (title, abstract, authors...) from public databases.
+  \item \textbf{Embed}: turn each abstract into a \emph{vector} (a list of numbers that captures its meaning).
+  \item \textbf{Reduce}: flatten those $\sim$768-dimensional vectors down to 2 so they can be drawn.
+  \item \textbf{Cluster}: group the nearby points $=$ subtopics discovered automatically.
+  \item \textbf{Visualize}: bubbles, mind map, gap detection, review draft.
+\end{enumerate}
+Each step is, at the same time, an ML concept you are going to master.
+\end{concepto}
+
+\section{The folder map (what each thing is, and in what order to look)}
+
+Everything lives inside \codigo{Documents\textbackslash Master Thesis AI\textbackslash}.
+\textbf{Golden rule:} the folders \emph{with a number} are yours (go in); the ones
+\emph{without a number} are the machinery (do not touch). The full cheat sheet is in the
+file \codigo{0\_LEEME\_PRIMERO.md} at the root.
+
+\textbf{Yours (numbered):}
+\begin{enumerate}
+  \item \codigo{1\_Apuntes/}: \textbf{your library} (these PDFs). Read them in order: 00, 01, 02...
+  \item \codigo{2\_Datos/}: the data. \codigo{raw/} (raw), \codigo{processed/} (clean tables),
+        \codigo{embeddings/} (vectors). It fills up on its own when you run the pipeline.
+  \item \codigo{3\_Resultados/}: the visible outputs, maps and reviews.
+  \item \codigo{4\_Notebooks/}: experimentation notebooks (Jupyter), when they arrive.
+  \item \codigo{5\_Bitacoras/}: decisions taken and your learning diary.
+\end{enumerate}
+
+\textbf{Machinery (no number, do not touch):}
+\begin{itemize}
+  \item \codigo{froth/}: \textbf{the source code} (the engine). One file per pipeline step:
+        \codigo{config.py} (settings) $\rightarrow$ \codigo{pull.py} $\rightarrow$
+        \codigo{embed.py} $\rightarrow$ \codigo{cluster.py} $\rightarrow$ \codigo{graph.py}
+        $\rightarrow$ \codigo{gaps.py} $\rightarrow$ \codigo{visualize.py}.
+  \item \codigo{.venv/}: the bubble holding Python and its libraries (see Note 01).
+  \item \codigo{tools/}: the compiler that turns these notes into PDFs.
+\end{itemize}
+
+\begin{ojo}
+Why does \codigo{froth/} \textbf{not} carry a number, if we said everything should be
+ordered? Because Python imports code by its name (\codigo{from froth import pull}) and a
+name starting with a number breaks the language. The \emph{order} of the pipeline does not
+live in the folder name but inside the code (\codigo{froth/\_\_init\_\_.py}). The notes
+and your own folders, on the other hand, are numbered because nobody imports them: they
+are only read.
+\end{ojo}
+
+\section{The 7 phases at a glance}
+
+\begin{enumerate}
+  \item[\textbf{F0}] \textbf{Foundations}: Python environment, Git, structure. \emph{(nearly closed)}
+  \item[\textbf{F1}] \textbf{Pull}: download 200 to 500 papers on a topic. \emph{(first version already works: 126 papers)}
+  \item[\textbf{F2}] \textbf{Embeddings}: text $\rightarrow$ vectors; semantic search. \emph{(next)}
+  \item[\textbf{F3}] \textbf{Clusters}: the subtopic bubbles (UMAP $+$ HDBSCAN $+$ BERTopic).
+  \item[\textbf{F4}] \textbf{Mind map}: a graph of relations between papers and topics.
+  \item[\textbf{F5}] \textbf{Gaps $+$ draft}: empty areas of the map and a structured review text.
+  \item[\textbf{F6}] \textbf{Deep learning}: PyTorch, transformers, fine-tuning your own model.
+\end{enumerate}
+
+\section{How to use these notes}
+
+Every time a new skill or concept shows up in the project, a numbered PDF note is generated
+and saved in \codigo{apuntes/}. You just go in there and read in order. Each note has
+coloured boxes: \textcolor{litblue}{\textbf{Concept}} (the idea),
+\textcolor{litgreen}{\textbf{Try it yourself}} (commands for you to type) and
+\textcolor{litorange}{\textbf{Watch out}} (typical mistakes).
+
+\begin{resumen}
+Froth is a 5-step pipeline that turns ``a topic'' into ``a map of the literature''; this
+note is your general blueprint: folders, phases and reading order.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 01 : Python, the engine; and the virtual environment, the toolbox}
+\cabecera{01}{Python, the engine; and the virtual environment, the toolbox}
+
+\section{Python: what it really is}
+
+The \codigo{.py} files in the \codigo{froth/} folder are plain text: written recipes.
+\textbf{Python} is the program that knows how to read and run them (the ``engine''). That is
+why the first step of the project was installing it: with no engine, the recipes are just
+paper.
+
+Your machine ended up with \textbf{Python 3.14}. When you type \codigo{python file.py} in a
+terminal, you are saying: ``engine, run this recipe''.
+
+\begin{concepto}{library (package)}
+Almost nothing is programmed from scratch. A \textbf{library} is packaged code that other
+people wrote and that you install and reuse: \codigo{requests} (talking to the internet),
+\codigo{pandas} (data tables), and so on. They are installed with the \codigo{pip} tool,
+which comes with Python. Think of them as apps you install into the engine.
+\end{concepto}
+
+\section{The problem the virtual environment solves}
+
+Imagine two projects on your PC: one needs \codigo{pandas} version 2 and the other version
+3. If you install everything ``into the system'', they step on each other and something
+breaks. The standard solution:
+
+\begin{concepto}{virtual environment (venv)}
+A \textbf{bubble folder} (in our case \codigo{.venv/} inside the project) holding a private
+copy of Python and its libraries, exclusive to this project. What you install inside touches
+nothing outside, and the other way round.
+
+It was created with: \codigo{python -m venv .venv}
+
+And since then, to run anything in the project we use the Python \emph{from the bubble}:
+\codigo{.venv\textbackslash Scripts\textbackslash python.exe}. That odd path at the start of
+every command means exactly that: ``use THIS project's engine''.
+\end{concepto}
+
+\section{requirements.txt: the shopping list}
+
+The \codigo{requirements.txt} file lists the libraries the project needs, with a comment
+saying what each one is for. Anyone (you on another PC, a colleague) can recreate the
+environment with a single order:
+\begin{center}
+\codigo{.venv\textbackslash Scripts\textbackslash python.exe -m pip install -r requirements.txt}
+\end{center}
+In Froth we install them \emph{by phase}: today only the Phase 1 ones (\codigo{requests},
+\codigo{pandas}, \codigo{pyarrow}, \codigo{truststore}). The heavy ML ones will arrive when
+their turn comes.
+
+\begin{ojo}
+If a command tells you \codigo{ModuleNotFoundError: No module named 'pandas'}, it almost
+always means you ran it with the \textbf{system} Python instead of the bubble's. Check that
+the command starts with \codigo{.venv\textbackslash Scripts\textbackslash python.exe}.
+\end{ojo}
+
+\begin{practica}
+Open PowerShell (Windows key $\rightarrow$ type \codigo{powershell} $\rightarrow$ Enter) and:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe --version} \quad (it should say 3.14)
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m pip list} \quad (the libraries in your bubble)
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+Python runs the code; the \codigo{.venv} is the project's private bubble with its libraries;
+\codigo{requirements.txt} is the list for rebuilding it anywhere.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 02 : APIs and JSON: how you ask a server for data}
+\cabecera{02}{APIs and JSON: how you ask a server for data}
+
+\section{The idea in 30 seconds}
+
+Your PC (the \emph{client}) sends a request over the internet to another computer (the
+\emph{server}) and that one answers with data. That is all. An \textbf{API}
+(\emph{Application Programming Interface}) is simply the official counter a service offers
+so that \emph{programs} (not people with a browser) can ask it for things.
+
+In Froth we use the \textbf{OpenAlex} API, a free catalogue with $\sim$250 million academic
+works.
+
+\begin{concepto}{HTTP GET request}
+A request is written as a URL with \textbf{parameters} after the \codigo{?} sign:
+\begin{center}
+\small\codigo{https://api.openalex.org/works?search=lepidolite flotation\&per\_page=25}
+\end{center}
+It reads: ``from the \codigo{works} catalogue, search me \codigo{lepidolite flotation}, give
+me 25 per page''. In Python, the \codigo{requests} library builds and sends this for you:
+\begin{center}
+\codigo{r = requests.get(url, params=\{...\})}
+\end{center}
+\end{concepto}
+
+\begin{concepto}{JSON}
+The server answers in \textbf{JSON}: a text format that looks just like Python dictionaries
+and lists (\codigo{\{"title": "...", "year": 2021\}}). That is why \codigo{r.json()} turns it
+straight into Python objects you can already work with. JSON is \emph{the} data exchange
+language of the internet.
+\end{concepto}
+
+\section{Details of a polite citizen}
+
+Public APIs are a shared resource. Three habits our \codigo{pull.py} already practises:
+
+\begin{enumerate}
+  \item \textbf{Identify yourself} (the \emph{polite pool}): we send our email in the
+        \codigo{mailto} parameter. OpenAlex gives better service to those who show their face.
+  \item \textbf{Do not hammer it}: between one search and the next we wait 0.3 s
+        (\codigo{time.sleep(0.3)}). Thousands of requests per second take services down.
+  \item \textbf{Ask only for what you need}: the \codigo{select} parameter lists the fields we
+        want (title, year, authors...). Less data $=$ faster for everyone.
+\end{enumerate}
+
+\begin{concepto}{the inverted abstract trick}
+OpenAlex does not store the abstract as running text but as an \emph{inverted index}: a
+dictionary \codigo{\{word: [positions where it appears]\}}. It is a real quirk of this API
+(they do it for legal and efficiency reasons). Our \codigo{\_reconstruct\_abstract()}
+function puts it back together: it places each word at its position and joins them. First
+example in the project of the fact that \textbf{real data arrives ``dirty''} and has to be
+worked on.
+\end{concepto}
+
+\begin{practica}
+Paste this URL into your browser (an API answers there too) and look at the raw JSON:
+\begin{center}
+\small\codigo{https://api.openalex.org/works?search=lepidolite\%20flotation\&per\_page=2}
+\end{center}
+Look for the \codigo{title}, \codigo{publication\_year} and
+\codigo{abstract\_inverted\_index} fields in the response.
+\end{practica}
+
+\begin{resumen}
+An API is a counter for programs: you send a URL with parameters, they answer JSON, and
+\codigo{requests} $+$ \codigo{r.json()} turn it into Python dictionaries.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 03 : When the internet says no: SSL, error codes and API keys}
+\cabecera{03}{When the internet says no: SSL, error codes and API keys}
+
+Today we ran into two different errors one after the other. It is worth gold to tell them
+apart, because one was \emph{your machine's} and the other \emph{the server's}, and they are
+fixed in opposite ways.
+
+\section{Error 1: the padlock (SSL / certificates)}
+
+\begin{concepto}{certificates and HTTPS}
+When your PC connects to \codigo{https://api.openalex.org}, before sending anything it checks
+the server's \textbf{certificate}: its digital ID card, signed by trusted authorities. That
+is how you know you are talking to the real OpenAlex and not to an impostor.
+
+Python carries its own list of trusted authorities. On your network (corporate, with an
+antivirus that inspects traffic), the certificate that arrived was not on that list, so
+Python refused: \codigo{CERTIFICATE\_VERIFY\_FAILED}. Your browser did work, because it uses
+the \emph{Windows} list, which does know that certificate.
+
+\textbf{Fix:} the \codigo{truststore} library tells Python ``use the Windows list''. We turn
+it on once in \codigo{froth/\_\_init\_\_.py} and it holds for the whole project.
+\end{concepto}
+
+\section{Error 2: the closed door (code 503)}
+
+\begin{concepto}{HTTP status codes}
+Every HTTP response carries a 3-digit number summing up how it went:
+\begin{itemize}
+  \item \textbf{2xx}: fine (\codigo{200 OK}).
+  \item \textbf{4xx}: the error is \emph{yours}. \codigo{404} does not exist, \codigo{401} no
+        permission, \codigo{429} you are asking too fast.
+  \item \textbf{5xx}: the error is \emph{the server's}. \codigo{500} it broke inside,
+        \codigo{503} ``unavailable'' (saturated or under maintenance).
+\end{itemize}
+Our \codigo{503} came with a clear message: ``anonymous search limited by load; use a free
+API key''. There was nothing to fix in the code: it was their door, closed to anonymous
+callers.
+\end{concepto}
+
+\begin{ojo}
+A mental rule for life: \textbf{SSL/certificates $\rightarrow$ problem on your side}
+(network, Python, certificates). \textbf{5xx $\rightarrow$ problem on their side} (wait,
+identify yourself, or change service). Retrying in a loop without understanding which of the
+two it is wastes your time.
+\end{ojo}
+
+\section{The API key: your VIP card (and why it is a secret)}
+
+\begin{concepto}{API key}
+An \textbf{API key} is a string of text that identifies your requests to the service. With
+it OpenAlex gives you stable access (1 USD/day of free usage, around 1000 searches, more than
+enough). It is sent as one more parameter: \codigo{api\_key=...}.
+
+Because it identifies \emph{you}, it is a \textbf{secret}: whoever has it spends your quota
+in your name. That is why:
+\begin{itemize}
+  \item It is \textbf{never} written inside the source code.
+  \item It lives in the \codigo{.openalex\_key} file at the project root (a single line).
+  \item That file is in \codigo{.gitignore}: the list of things Git (version control) is
+        forbidden to upload anywhere. If one day you publish the code on GitHub, your key
+        does not travel with it.
+\end{itemize}
+\codigo{config.py} reads it at startup (first it looks for the \codigo{OPENALEX\_API\_KEY}
+environment variable; failing that, the file) and \codigo{pull.py} adds it to every request.
+\end{concepto}
+
+\begin{practica}
+Check for yourself that the key is where it should be and out of Git's reach:
+\begin{enumerate}
+  \item Open \codigo{.gitignore} (with Notepad) and find the \codigo{.openalex\_key} line.
+  \item In PowerShell, inside the project folder:
+        \codigo{Get-Content .openalex\_key} \quad (you will see your key, only you).
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+SSL failed on your machine (fixed with truststore); the 503 was the saturated server turning
+away anonymous callers (fixed with an API key); and an API key is a secret that lives outside
+the code and outside Git.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 04 : Data tables: pandas and the parquet file}
+\cabecera{04}{Data tables: pandas and the parquet file}
+
+\section{What we got today}
+
+The project's first haul: \textbf{126 real papers} on your topic, saved in
+\codigo{data/processed/papers.parquet}. This note explains what that ``table'' is and why it
+is saved that way.
+
+\begin{concepto}{DataFrame (pandas)}
+\codigo{pandas} is THE table library in Python, and its star object is the
+\textbf{DataFrame}: a table with rows and columns, like an Excel sheet but driven by code.
+Ours has one row per paper and these columns:
+
+\begin{center}
+\begin{tabular}{ll}
+\codigo{id}, \codigo{doi} & unique identifiers of the paper \\
+\codigo{title}, \codigo{year} & title and year \\
+\codigo{citations} & how many times it has been cited \\
+\codigo{authors} & authors (text ``A; B; C'') \\
+\codigo{abstract} & the summary, \textbf{the raw material of the ML} \\
+\codigo{query} & which search it turned up in (for debugging) \\
+\end{tabular}
+\end{center}
+
+With a DataFrame you do in one line things that would be painful in Excel:
+\codigo{df.drop\_duplicates(subset="id")} removes repeated papers;
+\codigo{df[df["abstract"].str.len() > 20]} filters out the ones with no abstract;
+\codigo{df.sort\_values("citations")} sorts by citations.
+\end{concepto}
+
+\section{Cleaning matters more than it looks}
+
+\codigo{pull.py} does not save what arrives as it arrives. It does three cleanups:
+\begin{enumerate}
+  \item \textbf{Deduplicate}: the same paper can show up in several searches (``lepidolite
+        flotation'' and ``lithium mica flotation'' bring overlapping results).
+  \item \textbf{Filter out the abstract-less}: with no summary there is no meaning to vectorise.
+  \item \textbf{Rebuild the abstract} (see Note 02).
+\end{enumerate}
+
+\begin{ojo}
+A few \textbf{off-topic} papers slipped into our 126 (for example one about
+telecommunications). Why? An acronym collision: we searched ``LCT'' (a type of pegmatite) and
+it also exists in other fields. We are not fixing it by hand: in Phases 2 and 3 the ML itself
+will set them aside, because their \emph{vectors} will land far from the flotation ones. Real
+data always carries noise; the system has to tolerate it.
+\end{ojo}
+
+\begin{concepto}{parquet vs.\ CSV}
+We could have saved the table as \codigo{.csv} (plain comma-separated text). We chose
+\textbf{parquet} because:
+\begin{itemize}
+  \item \textbf{It compresses}: it takes several times less space.
+  \item \textbf{It stores by column}: reading only \codigo{year} and \codigo{citations} from
+        100\,000 papers does not force you to read the abstracts.
+  \item \textbf{It keeps the types}: in CSV everything comes back as text and you have to
+        re-guess what was a number; parquet remembers that \codigo{year} is an integer.
+\end{itemize}
+It is the standard format in modern data science. The \codigo{pyarrow} library is the one
+that knows how to read and write it; pandas uses it underneath with
+\codigo{df.to\_parquet()} and \codigo{pd.read\_parquet()}.
+\end{concepto}
+
+\begin{practica}
+Look at your haul with your own hands. In PowerShell, inside the project folder, open an
+interactive Python with \codigo{.venv\textbackslash Scripts\textbackslash python.exe} and
+type line by line:
+\begin{enumerate}
+  \item \codigo{import pandas as pd}
+  \item \codigo{df = pd.read\_parquet("data/processed/papers.parquet")}
+  \item \codigo{len(df)} \quad (how many papers?)
+  \item \codigo{df.columns} \quad (the columns)
+  \item \codigo{df.sort\_values("citations", ascending=False).head(3)[["title","year"]]}
+  \item \codigo{exit()} to leave.
+\end{enumerate}
+You have just done your first data analysis in pandas.
+\end{practica}
+
+\begin{resumen}
+A DataFrame is a programmable table; we clean duplicates and abstract-less rows; and parquet
+is the compressed, columnar, type-preserving format that serious data science uses.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 05 : What an embedding is (the heart of the project)}
+\cabecera{05}{What an embedding is (the heart of the project)}
+
+\section{The problem: the computer does not understand words}
+
+You, as an expert, know these two phrases talk about the same thing:
+\begin{itemize}
+  \item ``\emph{fine particle flotation}''
+  \item ``\emph{recovery of small mineral grains by froth}''
+\end{itemize}
+But they share almost no words. If we searched for ``matching words'', the system would say
+they have nothing to do with each other. And the other way round: ``river bank'' and ``bank
+account'' share the word ``bank'' and are not alike at all.
+
+\textbf{Conclusion:} counting equal words does not capture \emph{meaning}. We need something
+else.
+
+\section{The solution: turn the text into a point on a map}
+
+\begin{concepto}{embedding (meaning vector)}
+An \textbf{embedding} is a text turned into a list of numbers, its \emph{coordinates}, so
+that it can be placed as a \textbf{point} on a ``map of meaning''. The list of numbers is
+also called a \textbf{vector}.
+
+The magic property: the map is built so that \textbf{texts with similar meaning land close
+together}, and different ones far apart. Two papers studying the same thing fall together
+even if they use different words.
+\end{concepto}
+
+Picture the meaning map of your papers (here in 2D so it can be drawn):
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+  % flotation area
+  \fill[litblue!15] (1.2,1.2) ellipse (1.5 and 1.1);
+  \node[litblue] at (1.2,2.6) {\small\textbf{fines flotation}};
+  \filldraw[litblue] (0.6,1.0) circle (2pt);
+  \filldraw[litblue] (1.4,1.5) circle (2pt);
+  \filldraw[litblue] (1.9,0.9) circle (2pt);
+  \filldraw[litblue] (1.0,1.7) circle (2pt);
+  % by-products area
+  \fill[litgreen!15] (6.0,1.4) ellipse (1.4 and 1.0);
+  \node[litgreen] at (6.0,2.7) {\small\textbf{Ta/Nb/Be recovery}};
+  \filldraw[litgreen] (5.6,1.2) circle (2pt);
+  \filldraw[litgreen] (6.3,1.6) circle (2pt);
+  \filldraw[litgreen] (6.1,1.0) circle (2pt);
+  % off-topic outlier
+  \filldraw[litorange] (3.6,4.2) circle (2pt);
+  \node[litorange] at (3.6,4.6) {\small telecommunications paper (noise)};
+  % axes without numbers
+  \draw[->,gray] (-0.3,-0.3) -- (8,-0.3);
+  \draw[->,gray] (-0.3,-0.3) -- (-0.3,5);
+\end{tikzpicture}
+\end{center}
+
+Each point is a paper. The flotation ones group on the left; the by-product ones on the
+right; and the off-topic paper that slipped in (remember the telecommunications one?) sits
+\emph{alone, far from everything}, which is why the system will later be able to set it aside
+automatically.
+
+\section{Why 768 coordinates and not 2?}
+
+\begin{concepto}{dimensions}
+On a real map you use \textbf{2} coordinates: latitude and longitude. But meaning is much
+richer than a position on a plane, so more ``room'' is needed. The model we will use
+(SPECTER) describes each text with \textbf{$\sim$768 coordinates}.
+
+You cannot draw that (nobody sees in 768 dimensions), but it does not matter: the
+\textbf{mathematics} can still measure how close two points are even with 768 coordinates. In
+Note 06 we will see how (``cosine similarity''). In Phase 3 we will flatten those 768 down to
+2 precisely so we can draw the real map.
+\end{concepto}
+
+Each of those 768 numbers captures some abstract ``aspect'' of the text. They are not
+interpretable one by one (number 348 does not mean ``how much it talks about lithium''); what
+matters is the \emph{whole pattern} of the 768 together.
+
+\section{Where do the numbers come from? A pretrained model}
+
+\begin{concepto}{pretrained model}
+The 768 numbers are produced by \textbf{SPECTER}: a \emph{neural network} that the AllenAI
+organisation already trained by reading millions of scientific papers (and who cites whom).
+It learned to place similar texts close together.
+
+The key point: we \textbf{train nothing}. We download the finished model and use it, like
+someone using a calculator without manufacturing it. That is a \emph{pretrained model}, and
+it is the fastest and most powerful way to start in text ML.
+\end{concepto}
+
+\begin{ojo}
+Why SPECTER and not a generic model? Because it is trained \textbf{on papers}. A
+general-purpose model understands ordinary text; SPECTER understands academic language
+(methods, results, scientific jargon) far better for our case. A specialised tool for a
+specialised job.
+\end{ojo}
+
+\section{What we will do with this (what comes next)}
+
+\begin{enumerate}
+  \item Install the libraries that load SPECTER (next step).
+  \item Turn your 126 abstracts into 126 vectors (a $126 \times 768$ matrix).
+  \item Measure likeness with cosine similarity (Note 06).
+  \item Build the \textbf{semantic search engine}: you type a phrase $\rightarrow$ it gives
+        you the 5 papers closest in meaning. (The ``wow'' moment.)
+\end{enumerate}
+
+\begin{resumen}
+An embedding turns each text into a point (768 coordinates) inside a ``map of meaning'' where
+alike lands close; those numbers come from SPECTER, a model already trained on papers that we
+merely reuse.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 06 : Loading SPECTER and your first vector (using vs.\ building a model)}
+\cabecera{06}{Loading SPECTER and your first vector (using vs.\ building a model)}
+
+\section{What we did}
+
+In Note 05 we saw the \emph{idea} of the embedding. Here we touch it for real: we take an
+actual paper from your table and turn it into its vector.
+
+\begin{enumerate}
+  \item We load a paper (title $+$ abstract) from \codigo{2\_Datos/processed/papers.parquet}.
+  \item We load the model in one line: \codigo{SentenceTransformer("allenai-specter")}.
+  \item We convert it: \codigo{model.encode(text)} $\rightarrow$ a vector of \textbf{768 numbers}.
+\end{enumerate}
+
+The test paper was \emph{``Electrostatically Controlled Enrichment of Lepidolite via
+Flotation''} and its vector started with \codigo{[-0.59, -0.16, 1.34, ...]}. That paper is
+now a point on the map of meaning.
+
+\begin{concepto}{pretrained model, in practice}
+The first time you call \codigo{SentenceTransformer("allenai-specter")}, the library
+\textbf{downloads} the model ($\sim$440 MB) from the Hugging Face repository and stores it in
+a \emph{cache} on your disk. Later times it loads from there, instantly, with no internet.
+You train nothing: you use weights other people already computed.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Title $+$ abstract, not the abstract alone.} SPECTER was trained to receive the title
+glued to the abstract, because the title carries strong signal about the topic. That is why
+the code does \codigo{text = title + ". " + abstract} before vectorising. A small detail that
+improves the results.
+\end{ojo}
+
+\begin{ojo}
+\textbf{The \emph{warnings} that came up are harmless.} One mentioned ``symlinks'' (a disk
+optimisation on Windows) and the other ``HF\_TOKEN'' (an optional key for faster downloads).
+Neither prevents anything: the model loaded and worked. Learn to tell a \emph{warning}
+(a notice, carry on) from an \emph{error} (it stops).
+\end{ojo}
+
+\section{The key question: are we building the model?}
+
+\textbf{No.} And it pays to be crystal clear about the difference between two things that
+sound alike:
+
+\begin{center}
+\begin{tabular}{p{4.3cm} p{4.3cm} p{4.3cm}}
+ & \textbf{USING a model} & \textbf{TRAINING a model} \\[2pt]
+\hline
+What do you do? & You download a finished one and feed it text & You teach it from scratch with data; you adjust its ``weights'' \\[6pt]
+What does it cost? & One line of code, seconds & Weeks, lots of data, graphics cards (GPUs) \\[6pt]
+In Froth? & \textbf{Phases 2 to 5} (what we are doing now) & \textbf{Phase 6}, optional and advanced \\
+\end{tabular}
+\end{center}
+
+\begin{concepto}{why reusing is the right call (for now)}
+To draw the bubbles and the map, generic SPECTER, trained on millions of papers from every
+field, is more than enough. Training your own embedding model from scratch would be
+reinventing the wheel: hugely expensive and with no clear gain at this stage. Project rule:
+\emph{recycle without shame}. What is original about your work is in \textbf{how you combine}
+the pieces and the problem you solve, not in re-manufacturing the engine.
+\end{concepto}
+
+\section{So when do we actually touch ``the model''?}
+
+In \textbf{Phase 6} (the last one, optional). There the experiment with thesis potential is
+to \emph{fine-tune} a model with papers from your own domain (minerals, flotation,
+metallurgy) and measure whether it produces \textbf{better} clusters than generic SPECTER.
+That really is ``building something of your own'', and by then you will have learned PyTorch
+and how a model works inside. It is dessert, not the main course.
+
+\begin{resumen}
+The vector model (SPECTER) is already built: we only download and use it, we do not train it.
+Using $\neq$ training; training your own is Phase 6, optional. For now, relax: the engine is
+already made.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 07 : Vectorising the 126 papers: the embedding matrix}
+\cabecera{07}{Vectorising the 126 papers: the embedding matrix}
+
+\section{From one to all}
+
+In Note 06 we turned \emph{one} paper into its vector. Here we convert all \textbf{126 at
+once} and \textbf{save} the result to disk. That is the key difference: before we were only
+looking; now we produce data that the next phases will reuse.
+
+\begin{concepto}{matrix (N rows $\times$ M columns)}
+A vector is a row of numbers. Stack many vectors and you get a \textbf{matrix}: a table of
+numbers. Ours has shape \codigo{(126, 768)}:
+\begin{itemize}
+  \item \textbf{126 rows}: one per paper.
+  \item \textbf{768 columns}: the coordinates of each paper.
+\end{itemize}
+\emph{Row i} of the matrix is the vector of \emph{paper i} in the table: same order. That
+alignment is sacred, it is how we know which vector belongs to which paper.
+\end{concepto}
+
+\section{Batch processing: why it is faster}
+
+The code does not call the model 126 times (once per paper). It hands over the \textbf{whole
+list} of texts and the model processes them in \emph{batches} (you saw the
+\codigo{Batches: 4/4} bar).
+
+\begin{concepto}{batch}
+Processing in batches means giving many examples together so the model makes better use of
+the processor (it does the arithmetic in parallel). One by one would work, but it would be
+slower. Our 126 papers took $\sim$45 seconds on CPU; with a graphics card it would be faster
+still, but at this size there is no need.
+\end{concepto}
+
+\section{Saving to disk: the \codigo{.npy} file}
+
+Vectorising costs seconds; we do not want to repeat it every time. So we save the matrix in
+\codigo{2\_Datos/embeddings/vectors.npy}.
+
+\begin{concepto}{the .npy format (NumPy)}
+\codigo{.npy} is NumPy's own format for storing arrays and matrices of numbers as they are,
+without converting to text. It is written with \codigo{np.save()} and read back instantly
+with \codigo{np.load()}. Our 126$\times$768 matrix weighs barely $\sim$378 KB. The next
+phases (reduce to 2D, cluster) will read this file instead of recomputing.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Golden rule of the pipeline:} each phase leaves its result saved and the next one
+reads it. Papers $\rightarrow$ \codigo{papers.parquet}; vectors $\rightarrow$
+\codigo{vectors.npy}. If something breaks further down the line, you do not have to download
+papers again or recompute embeddings: you pick up from the last saved file.
+\end{ojo}
+
+\section{What got built}
+
+\begin{itemize}
+  \item The \codigo{embed\_papers(df)} function in \codigo{froth/embed.py} (no longer empty).
+  \item The file \codigo{2\_Datos/embeddings/vectors.npy} with the 126$\times$768 matrix.
+  \item The \codigo{save\_embeddings()} and \codigo{load\_embeddings()} helpers for the
+        phases to come.
+\end{itemize}
+
+\begin{resumen}
+We stacked the 126 vectors into a matrix (126$\times$768), computed it in batches (fast) and
+saved it in \codigo{vectors.npy} so it is not recomputed; row i is always paper i.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 08 : Cosine similarity: measuring how alike two papers are}
+\cabecera{08}{Cosine similarity: measuring how alike two papers are}
+
+\section{The problem}
+
+You already have 126 points (vectors) on the map of meaning. Natural question: given two
+papers, how does the computer put a number on ``how alike they are''? With \textbf{cosine
+similarity}.
+
+\section{The idea: the angle between two arrows}
+
+Each vector is an \textbf{arrow} leaving the origin and pointing at the paper's position. To
+compare two papers we look at the \textbf{angle} between their arrows:
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0]
+  % similar case
+  \draw[->,gray] (0,0) -- (3.2,0);
+  \draw[->,gray] (0,0) -- (0,3.2);
+  \draw[->,litblue,very thick] (0,0) -- (2.6,2.2);
+  \draw[->,litgreen,very thick] (0,0) -- (2.9,1.6);
+  \draw (1.0,0.62) arc (32:40:1.2);
+  \node at (1.7,0.55) {\small small angle};
+  \node[align=center] at (1.6,-0.8) {\small\textbf{alike}\\[-2pt]\small cosine $\approx 1$};
+  % separator
+  \node at (4.6,1.5) {\Large $\Rightarrow$};
+  % different case
+  \begin{scope}[xshift=6cm]
+    \draw[->,gray] (0,0) -- (3.2,0);
+    \draw[->,gray] (0,0) -- (0,3.2);
+    \draw[->,litblue,very thick] (0,0) -- (2.9,0.5);
+    \draw[->,litorange,very thick] (0,0) -- (0.5,2.9);
+    \node[align=center] at (1.6,-0.8) {\small\textbf{different}\\[-2pt]\small cosine $\approx 0$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\begin{concepto}{cosine similarity}
+It is the \textbf{cosine of the angle} between two vectors. It gives an easy number to read:
+\begin{itemize}
+  \item Arrows nearly aligned (small angle) $\rightarrow$ cosine \textbf{close to 1}
+        $\rightarrow$ same topic.
+  \item Perpendicular arrows (90$^\circ$) $\rightarrow$ cosine \textbf{close to 0}
+        $\rightarrow$ unrelated.
+\end{itemize}
+For text embeddings the value usually falls between 0 and 1.
+\end{concepto}
+
+\begin{ojo}
+Why the \emph{angle} and not the \emph{distance} between the tips? Because what matters is
+\textbf{which way} the meaning points, not how long the arrow is. Two papers on the same
+topic, one with a long abstract and one with a short one, will have arrows of different
+``size'' but pointing the same way: the angle recognises them as equal; straight-line
+distance would be fooled by the size.
+\end{ojo}
+
+\section{The test on your papers (real numbers)}
+
+We took the paper \emph{``Enrichment of Lepidolite via Flotation''} and computed its cosine
+against the other 125. This came out:
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Cosine} & \textbf{Paper} & \textbf{Does it make sense?} \\
+\hline
+0.942 & Selective Inhibition ... Flotation of Lepidolite & yes: same topic \\
+0.941 & Froth Flotation of Lepidolite, A Review & yes: same topic \\
+0.932 & Flotation Collectors for Lepidolite Mineral & yes: same topic \\
+\hline
+0.511 & ...Radio Resources for Multicell Mobile & no: telecommunications \\
+0.507 & Adrienne Rich and the Poetry... & no: poetry \\
+0.495 & Theodore Beza... Peace in France 1572 & no: history \\
+\end{tabular}
+\end{center}
+
+The lepidolite flotation papers came out with a cosine of $\sim$0.94 (nearly identical in
+topic), and the off-topic noise that slipped in during Phase 1 sat at $\sim$0.50 (far away).
+The system sorted them correctly \textbf{knowing nothing about mining}: purely from the
+meaning of the abstracts.
+
+\begin{concepto}{the tool: scikit-learn's \codigo{cosine\_similarity}}
+We do not compute the angle by hand.
+\codigo{sklearn.metrics.pairwise.cosine\_similarity} takes vectors and returns the cosines.
+We passed it one paper against the matrix of 126 and got all 126 similarities in one go.
+\end{concepto}
+
+\section{What this is for}
+
+This number is the building block of the \textbf{semantic search engine} (next step): to find
+the papers closest to a phrase, we turn the phrase into a vector and keep the ones with the
+\emph{highest} cosine. And in Phase 3, that same idea of ``who is near whom'' is what forms
+the subtopic bubbles.
+
+\begin{resumen}
+Cosine similarity measures the angle between two vectors: $\approx 1$ same topic, $\approx 0$
+unrelated. On your papers, flotation vs flotation gave 0.94 and flotation vs noise 0.50: it
+works.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 09 : The semantic search engine (putting it all together)}
+\cabecera{09}{The semantic search engine (putting it all together)}
+
+\section{What we built}
+
+A tool that takes a \textbf{phrase in natural language} and returns the papers closest
+\emph{in meaning}, not by shared words. It is the \codigo{most\_similar()} function in
+\codigo{froth/embed.py}, and it brings together everything learned in Phase 2.
+
+\begin{concepto}{semantic search vs.\ keyword search}
+Classic search (Ctrl+F, basic Google) matches \textbf{words}: if you search ``grain size'' it
+does not find a text saying ``coarse and fine particles'', even though they mean the same
+thing. \textbf{Semantic} search matches \textbf{meaning}: it turns your phrase into a vector
+and looks for nearby vectors, so it does relate them.
+\end{concepto}
+
+\section{How it works inside (3 steps)}
+
+\begin{enumerate}
+  \item \textbf{Vectorise the phrase.} Your phrase goes through the \emph{same} model
+        (SPECTER) with \codigo{model.encode([query])}. Key point: the phrase and the papers
+        must live on the same map, or comparing them would make no sense.
+  \item \textbf{Measure against everything.} With \codigo{cosine\_similarity} we compute the
+        cosine of your phrase against all 126 vectors at once.
+  \item \textbf{Keep the best.} We sort from highest to lowest cosine and return the first
+        \codigo{k} (5 by default), as a \codigo{score, title, year} table.
+\end{enumerate}
+
+\begin{ojo}
+The same model for both things. If you vectorised the papers with SPECTER and the phrase with
+a different model, the two ``maps'' would not line up and the results would be rubbish.
+Embedding consistency $=$ golden rule.
+\end{ojo}
+
+\section{The test (real results)}
+
+Search: \emph{``how does grain size affect the recovery of minerals by froth flotation''}
+\begin{center}
+\begin{tabular}{ll}
+\textbf{Score} & \textbf{Paper} \\
+\hline
+0.873 & Role of Bubble Size in Flotation of Coarse and Fine Particles \\
+0.856 & Effect of Clay Slime on the Froth Stability and Flotation Performance \\
+0.855 & Spodumene Flotation Mechanism \\
+\end{tabular}
+\end{center}
+We typed ``grain size'' and it found papers about ``coarse and fine particles'' and
+``ultrafine'': \textbf{it understood the meaning, not the words}.
+
+Search: \emph{``extracting beryllium and tantalum as valuable by-products''}
+\begin{center}
+\begin{tabular}{ll}
+\textbf{Score} & \textbf{Paper} \\
+\hline
+0.812 & Niobium and tantalum \\
+0.740 & Concentration of Tantalum and Niobium \\
+\end{tabular}
+\end{center}
+It brought back exactly the Ta/Nb/Be by-product papers from your thesis.
+
+\begin{concepto}{a score between 0 and 1}
+The \codigo{score} is the cosine similarity (Note 08). Here it hovers around 0.7 to 0.9:
+high, and it makes sense. Careful: ``free phrase vs.\ paper'' scores tend to be somewhat
+lower than ``paper vs.\ paper'' (0.94 earlier), because a short phrase is less rich than a
+whole abstract. What matters is the \emph{ordering}, not the absolute number.
+\end{concepto}
+
+\section{What this means for the project}
+
+You now have a genuinely useful tool: interrogating your corpus in natural language. And more
+importantly: the machinery (vectorise $+$ cosine $+$ sort) is \textbf{the same} one that will
+form the subtopic bubbles in Phase 3. Mastering this is mastering the core of Froth.
+
+\begin{resumen}
+The semantic search engine turns your phrase into a vector, compares it by cosine against the
+126 papers and returns the closest in meaning. Tested: ``grain size'' found ``fine/coarse
+particles''. Froth's engine is already beating.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 10 : Jupyter notebooks: your interactive search engine}
+\cabecera{10}{Jupyter notebooks: your interactive search engine}
+
+\section{What a notebook is and why it matters}
+
+\begin{concepto}{Jupyter notebook}
+A \textbf{notebook} (a \codigo{.ipynb} file) is a document made of \textbf{cells} you can run
+one at a time. There are two kinds of cell: \textbf{code} (Python that runs) and \textbf{text}
+(explanations in Markdown). You run a cell with \textbf{Shift + Enter}.
+\end{concepto}
+
+The point of it: you try something, you see the result right underneath, you change something
+and run again, without restarting the whole program. That is why it is \textbf{the}
+exploration tool in data science. On top of that, a well-made notebook is an excellent
+portfolio piece: it tells a story (text $+$ code $+$ results) that anyone can follow.
+
+\section{Your notebook: \codigo{4\_Notebooks/01\_buscador\_semantico.ipynb}}
+
+It wraps the \codigo{most\_similar()} function in a comfortable interface:
+\begin{enumerate}
+  \item A \textbf{setup} cell loads the 126 papers and their vectors.
+  \item A \textbf{query} cell where you change the \codigo{my\_query} variable to whatever
+        phrase you want, and run.
+  \item The result shows up as a \textbf{table} (score, title, year, citations), because
+        \codigo{most\_similar} returns a DataFrame and Jupyter renders those nicely.
+\end{enumerate}
+
+\begin{practica}
+Open it yourself and validate as the expert. In PowerShell, inside the project folder:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m jupyter notebook "4\_Notebooks\textbackslash 01\_buscador\_semantico.ipynb"}
+\end{enumerate}
+It opens in your browser. Run the cells with Shift+Enter, change \codigo{my\_query} and try
+phrases from your field. \textbf{You are the judge} of whether the papers that come out are
+the right ones: that is the validation that closes Phase 2.
+\end{practica}
+
+\begin{ojo}
+The notebook starts with \codigo{sys.path.insert(...)} pointing at the project folder. That is
+so Python finds the \codigo{froth} package even though the notebook lives in the
+\codigo{4\_Notebooks/} subfolder. Without that line, \codigo{from froth import embed} would
+fail.
+\end{ojo}
+
+\section{Notebook vs.\ code (\codigo{.py}): when to use which?}
+
+\begin{center}
+\begin{tabular}{p{6.5cm} p{6.5cm}}
+\textbf{Notebook (\codigo{.ipynb})} & \textbf{Module (\codigo{.py})} \\
+\hline
+Exploring, trying ideas, teaching, presenting results. & Stable code that gets reused
+(the ``engine'', like \codigo{embed.py}). \\
+Read top to bottom like a story. & Imported from other files. \\
+\end{tabular}
+\end{center}
+A healthy rule: explore in the notebook; when something works and you are going to reuse it,
+move it to a \codigo{.py} in the package. Your search engine already lives in
+\codigo{embed.py}; the notebook only \emph{uses} it.
+
+\begin{resumen}
+A notebook is a document of runnable cells (Shift+Enter), ideal for exploring and presenting.
+Yours wraps \codigo{most\_similar} so you can type queries and see the papers in a table: use
+it to validate Phase 2 with your expert judgement.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 11 : Your first web app with Streamlit}
+\cabecera{11}{Your first web app with Streamlit}
+
+\section{What we built}
+
+A \textbf{web page that runs on your own PC}: a search box where you type a phrase and see the
+most relevant papers in a table. It is the \codigo{app.py} file at the project root, and
+inside it uses the \emph{same} \codigo{most\_similar()} from Phase 2. No new engine: just a
+nice face on top.
+
+\begin{concepto}{Streamlit}
+\textbf{Streamlit} is a library that turns a Python script into an interactive website without
+you having to know HTML, CSS or JavaScript. You write \codigo{st.title(...)},
+\codigo{st.text\_input(...)}, \codigo{st.dataframe(...)} and Streamlit draws the page. Every
+time the user changes something (types, moves the slider), Streamlit \textbf{re-runs the
+script} from top to bottom and refreshes the view.
+\end{concepto}
+
+\section{How to start it}
+
+\begin{practica}
+From the project folder, in PowerShell:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m streamlit run app.py}
+\end{enumerate}
+A tab opens by itself at \codigo{http://localhost:8501}. Type a query, move the results slider
+and look at the table. To shut it down: \textbf{Ctrl + C} in PowerShell.
+\end{practica}
+
+\begin{ojo}
+``localhost'' means ``this very machine''. The site is NOT on the internet: it lives and runs
+on your PC. That is why you pay for no domain and no hosting. For others to use it: either
+they download the repo and run it the same way, or you upload it for free to Streamlit
+Community Cloud / Hugging Face Spaces (see below).
+\end{ojo}
+
+\section{Two tricks in the code worth understanding}
+
+\begin{concepto}{cache: do not reload the heavy things on every click}
+Since Streamlit re-runs the script on every interaction, loading the 126 papers and their
+vectors each time would be slow. The \codigo{@st.cache\_resource} decorator on the
+\codigo{load\_data()} function makes them load \textbf{once} and be reused. The SPECTER model
+is cached the same way (a global variable in \codigo{embed.py}).
+\end{concepto}
+
+On top of that, \codigo{app.py} imports \codigo{from froth import config, embed}: the website
+is only a client of the engine you already have. If tomorrow you improve
+\codigo{most\_similar}, the website improves by itself.
+
+\section{How it gets shared (your portfolio goal)}
+
+\begin{itemize}
+  \item \textbf{Download and run:} you push the repo to GitHub; anyone does \codigo{git clone},
+        installs \codigo{requirements.txt} and runs it on their PC. Free. (GitHub stores the
+        code, it does not run it for the visitor.)
+  \item \textbf{Free public link (optional):} Streamlit Community Cloud or Hugging Face Spaces
+        host the app for free and give you a public URL. No paid domain.
+\end{itemize}
+
+\section{What comes next (the vision)}
+
+This app is the \textbf{Thesis module}: input $=$ a title or phrase. Later comes the
+\textbf{Task/Research module}: you attach instruction PDFs and write what you are being asked
+for, and the same engine returns the relevant papers. And in Phase 3, on top of the list, the
+subtopic \textbf{bubble map} will appear right here.
+
+\begin{resumen}
+Streamlit turns your script into a local website (localhost) without knowing HTML.
+\codigo{app.py} wraps \codigo{most\_similar} in a search box; you start it with
+\codigo{streamlit run app.py}, share it via GitHub or free hosting, and it is the base of the
+two future modules.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 12 : Dimensionality reduction: from 768 to 2 without losing the neighbourhood}
+\cabecera{12}{Dimensionality reduction: from 768 to 2 without losing the neighbourhood}
+
+\section{The problem}
+
+Each paper is a point in \textbf{768 dimensions} (Notes 05 to 07). Your screen has
+\textbf{2}. To draw the map you have to ``flatten'', but a bad flattening piles up points that
+have nothing to do with each other, and then the map lies. The question of this note:
+\emph{how do you flatten while preserving who is near whom?}
+
+\section{The classic intuition: PCA and shadows}
+
+\begin{concepto}{PCA (principal component analysis)}
+Think of the \textbf{shadow} of your hand on the wall: a 3D object projected into 2D. Orient
+the hand well and the shadow keeps the shape (you can see the fingers); orient it badly and
+everything overlaps. \textbf{PCA looks for the ``light angle'' that loses the least
+information}: the directions in which the data varies most. It is the classic technique, fast
+and widely used.
+\end{concepto}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+  \fill[litblue!60] (0.3,2.1) circle (3pt);
+  \fill[litblue!60] (0.8,2.5) circle (3pt);
+  \fill[litblue!60] (0.5,2.9) circle (3pt);
+  \fill[litorange!80] (2.6,0.6) circle (3pt);
+  \fill[litorange!80] (3.1,1.0) circle (3pt);
+  \fill[litorange!80] (2.9,0.3) circle (3pt);
+  \draw[->,gray,thick] (-0.5,0) -- (4,0) node[below left] {\small good projection};
+  \draw[litblue] (0.3,0.08) -- (0.9,0.08);
+  \draw[litorange] (2.5,0.08) -- (3.2,0.08);
+  \node[gray] at (1.7,-0.75) {\small the two groups stay apart};
+
+  \begin{scope}[xshift=7cm]
+    \fill[litblue!60] (0.5,2.3) circle (3pt);
+    \fill[litblue!60] (1.0,2.7) circle (3pt);
+    \fill[litblue!60] (0.7,3.1) circle (3pt);
+    \fill[litorange!80] (0.4,0.6) circle (3pt);
+    \fill[litorange!80] (0.9,1.0) circle (3pt);
+    \fill[litorange!80] (0.7,0.3) circle (3pt);
+    \draw[->,gray,thick] (-0.5,0) -- (4,0) node[below left] {\small bad projection};
+    \draw[litblue] (0.45,0.10) -- (1.05,0.10);
+    \draw[litorange] (0.35,0.06) -- (0.95,0.06);
+    \node[gray] at (1.7,-0.75) {\small the groups pile up!};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+The limitation: PCA only makes \emph{straight} (linear) projections. If the data forms curved
+or tangled clouds, as tends to happen with text, even the best angle piles things on top of
+each other.
+
+\section{The modern one: UMAP and moving neighbourhoods house by house}
+
+\begin{concepto}{UMAP}
+UMAP does not project shadows. It works in two stages:
+\begin{enumerate}
+  \item In 768D, it notes for each paper \textbf{who its nearest neighbours are}.
+  \item It places the points in 2D, bending and stretching whatever it needs to, with a single
+        obsession: \textbf{that every point keeps its neighbours beside it}.
+\end{enumerate}
+Like moving a city onto a smaller map while guaranteeing that each house stays next to the
+same houses as before, even if the long distances change. That is why UMAP separates clouds
+that PCA piles up: it is not restricted to straight projections.
+\end{concepto}
+
+\section{The small print: every 2D map lies a little}
+
+\begin{ojo}
+Flattening 768 dimensions into 2 \textbf{always} loses something. On a UMAP map:
+\begin{itemize}
+  \item \textbf{Trust}: who is stuck to whom; the clouds and groups that form.
+  \item \textbf{Do NOT trust}: the long distances (``this cluster is twice as far as that
+        one'') nor the apparent size of the clouds.
+  \item The X and Y axes \textbf{mean nothing} (they are not ``more flotation'' or ``more
+        lithium''); they are just the result of the arrangement. That is why UMAP maps are
+        published without numbers on the axes.
+\end{itemize}
+Knowing this puts you ahead of a lot of people who over-read these maps.
+\end{ojo}
+
+\section{How we will use it (what comes next)}
+
+\begin{enumerate}
+  \item Install \codigo{umap-learn} (if Python 3.14 allows it; there is a plan B with
+        scikit-learn's PCA/t-SNE, which changes the part, not the concept).
+  \item Run UMAP on the $126 \times 768$ matrix $\rightarrow$ a table of 126 points (x, y).
+  \item Draw the first scatter plot: your first glimpse of the map (Note 13).
+  \item Then group the clouds into subtopics with HDBSCAN (Note 14).
+\end{enumerate}
+
+\begin{resumen}
+PCA flattens by looking for the best ``shadow angle'' (fast but straight); UMAP rearranges
+while preserving neighbourhoods (ideal for text). On the resulting map: trust the neighbours
+and the clouds, distrust long distances, and the axes mean nothing.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 13 : UMAP in action: the first map of your 126 papers}
+\cabecera{13}{UMAP in action: the first map of your 126 papers}
+
+\section{What we did}
+
+We ran UMAP for real on the $126 \times 768$ matrix and out came a $126 \times 2$ table: one
+(x, y) coordinate per paper. We saved them in \codigo{2\_Datos/embeddings/umap\_2d.npy} and
+drew the first scatter plot (it is in \codigo{3\_Resultados/umap\_first\_look.png}).
+
+\textbf{The important part of the result:} without being told anything about mining,
+\emph{structures} are already visible: a big cloud on the left, an arm at the top right, a
+diagonal strip at the bottom with a tight clump in the corner. Those are (probably) your
+subtopics waiting to be named. The next step (HDBSCAN) will delimit them formally.
+
+\section{The three decisions in the code (and why)}
+
+\begin{concepto}{metric="cosine", measuring with the same yardstick}
+UMAP needs to decide who each point's ``neighbours'' are, and for that it measures distances.
+We told it to measure them with \textbf{cosine similarity}, exactly the same yardstick as
+Phase 2 (Note 08). If Phase 2 compares papers by cosine and UMAP used a different measure, the
+map would tell a different story from the search engine. Consistency above all.
+\end{concepto}
+
+\begin{concepto}{random\_state=42, reproducibility}
+UMAP has internal randomness (where the arrangement starts from). With no fixed seed, each run
+would give a \emph{slightly} different map: same groups, different positions. Fixing
+\codigo{random\_state=42} means anyone running your code gets \textbf{the same map}. In
+science (and in your thesis) that is called \emph{reproducibility} and it is sacred.
+(The 42 is a programmers' in-joke; any fixed number works.)
+\end{concepto}
+
+\begin{concepto}{n\_components=2, how many output dimensions}
+We asked for 2 dimensions because the goal is to \emph{draw}. You can reduce to 5 or 10
+(sometimes useful for clustering); we will explore that if it is needed.
+\end{concepto}
+
+\begin{ojo}
+In the scatter plot we removed the numbers on the axes \textbf{on purpose}. After Note 12 you
+already know why: in UMAP the axes mean nothing. If one day you see a UMAP map with numbered,
+interpreted axes (``the higher the X, the more of such and such''), distrust the author.
+\end{ojo}
+
+\section{How to read your first map}
+
+\begin{itemize}
+  \item \textbf{Dense clouds} $=$ groups of papers talking about the same thing (future clusters).
+  \item \textbf{Loose points / bridges} $=$ papers that mix topics or do not fit (candidates
+        for ``noise'' in HDBSCAN).
+  \item \textbf{Overall shape} (arm, strip, clump): it suggests subtopics with different
+        cohesion. A tight clump is a very specific topic; a broad cloud, a general one.
+\end{itemize}
+
+\begin{resumen}
+UMAP turned 768 dimensions into a reproducible 2D map (fixed seed) measuring neighbours by
+cosine (the same yardstick as always), and the clouds appeared on their own: they are the
+subtopics HDBSCAN will delimit in the next step.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 14 : Clustering: letting the algorithm find the groups (HDBSCAN)}
+\cabecera{14}{Clustering: letting the algorithm find the groups (HDBSCAN)}
+
+\section{The problem}
+
+Your 2D map (Note 13) shows clouds to the naked eye, but ``to the naked eye'' is not a method:
+we need an algorithm to delimit the groups objectively and repeatably. That is
+\textbf{unsupervised clustering}: grouping without anyone saying what each group is or how
+many there are.
+
+\section{The classic intuition: K-means (and its two traps)}
+
+\begin{concepto}{K-means}
+The most famous method. You tell it ``I want \textbf{K} groups'' and it splits the points into
+K compact groups. Simple and fast, but with two traps for our case:
+\begin{enumerate}
+  \item \textbf{You have to guess K.} How many subtopics does your topic have? That is exactly
+        what we do NOT know (it is what we want to discover).
+  \item \textbf{It forces EVERY point into some group.} The poetry paper would end up assigned
+        to a flotation cluster, contaminating it.
+\end{enumerate}
+\end{concepto}
+
+\section{What we use: HDBSCAN, density-based clustering}
+
+\begin{concepto}{HDBSCAN}
+Instead of splitting, HDBSCAN looks for \textbf{dense zones}: regions where many points sit
+tightly together. Each dense zone $=$ one cluster. Consequences:
+\begin{itemize}
+  \item \textbf{It decides by itself how many groups there are} (we do not guess K).
+  \item Whatever belongs to no dense zone is left as \textbf{noise} (label $-1$), instead of
+        contaminating a group.
+  \item Its main parameter is \codigo{min\_cluster\_size}: the minimum number of points needed
+        for something to count as a group (in Froth: \codigo{MIN\_CLUSTER\_SIZE = 8}).
+\end{itemize}
+\end{concepto}
+
+\section{What happened with YOUR papers (the real story)}
+
+With \codigo{min\_cluster\_size=8}, HDBSCAN found \textbf{3 clusters $+$ 9 noise papers}
+(and with 5, almost identical: a \emph{stable} result, a good sign):
+
+\begin{center}
+\begin{tabular}{llp{6.6cm}}
+\textbf{Group} & \textbf{Size} & \textbf{What it turned out to be (Note 15)} \\
+\hline
+Cluster 0 & 49 & Geology of pegmatites and rare-metal granites \\
+Cluster 2 & 43 & Lepidolite flotation (the heart of the thesis) \\
+Cluster 1 & 25 & ``Drawer of other people's things'': lithium recycling/economy $+$ the off-topic ones \\
+Noise & 9 & Generalist bridges and oddities \\
+\end{tabular}
+\end{center}
+
+\begin{ojo}
+\textbf{Two surprises that teach a lot:}
+\begin{enumerate}
+  \item \textbf{``Noise'' is not always rubbish.} Two entirely on-topic classics landed in the
+        noise (for example \emph{The Effect of Bubble Size on Fine Particle Flotation}, 527
+        citations). Why? They are \emph{generalist} papers that speak to several subtopics at
+        once: they live ``between'' the clouds, without fully belonging to any.
+  \item \textbf{The off-topic ones were not noise: they were quarantined together.} The
+        telecommunications paper, the poetry one and the history one all three fell inside
+        cluster 1. ``Not being on topic'' is also something in common, and it forms its own
+        cloud far from the mining ones.
+\end{enumerate}
+\end{ojo}
+
+\begin{resumen}
+K-means demands that you guess K and forces everyone in; HDBSCAN groups by density, decides by
+itself how many groups there are and sets the noise aside. On your data: 3 stable subtopics
+$+$ 9 noise papers, with the off-topic ones quarantined inside their own cluster.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 15 : Naming the bubbles: c-TF-IDF}
+\cabecera{15}{Naming the bubbles: c-TF-IDF}
+
+\section{The problem}
+
+HDBSCAN gives you groups called ``0'', ``1'', ``2''. For the map we need names with meaning.
+How do you name a group of 49 papers \emph{automatically}?
+
+\section{Why the most frequent words do NOT work}
+
+If you take the most repeated words in each cluster, the same ones come out in ALL of them:
+``mineral'', ``flotation'', ``study'', ``results''. Frequent $\neq$ characteristic. What
+distinguishes a group are the words it uses a lot \textbf{and the others use little}.
+
+\begin{concepto}{TF-IDF and its class-based version (c-TF-IDF)}
+\textbf{TF-IDF} scores each word by combining two factors: how frequent it is in a document
+(TF) and how \emph{rare} it is in the rest (IDF). Frequent here $+$ rare elsewhere $=$ high
+score $=$ characteristic.
+
+The \textbf{c-TF-IDF} (class-based) variant applies this to clusters: all the abstracts of
+each cluster are glued together as if they were \textbf{a single mega-document}, and the
+mega-documents are compared against each other. The top words of each mega-document are the
+cluster's label. It is the same trick BERTopic uses inside.
+\end{concepto}
+
+\section{What came out with YOUR clusters}
+
+\begin{center}
+\begin{tabular}{lp{5.2cm}p{5.2cm}}
+\textbf{Group} & \textbf{Keywords (top c-TF-IDF)} & \textbf{Reading} \\
+\hline
+Cluster 0 (49) & melt, crystallization, Nb, Zr, Hf & Geology/petrology of pegmatites and
+rare-metal granites \\
+Cluster 2 (43) & flotation, collector, froth, lepidolite & Lepidolite flotation:
+collectors and froths \\
+Cluster 1 (25) & commodity, old scrap, USGS, women, men & Lithium economy/recycling $+$ the
+off-topic papers (quarantine) \\
+\end{tabular}
+\end{center}
+
+The map makes complete mineralogical sense: on one side the geology of the deposit, on the
+other the processing (flotation), and separately ``the rest of the world''.
+
+\begin{ojo}
+\textbf{A data quality finding:} among the flotation cluster's keywords, some \emph{French}
+words slipped in (``du'', ``récupération''). Cause: the corpus contains French abstracts
+(Beauvoir is in France!) and our \emph{stopword} list (empty words that get ignored: the, of,
+and...) only covers English. It breaks nothing, but it dirties the labels. Possible fixes:
+multilingual stopwords, or detecting the language during the Phase 1 cleanup. Lesson: real
+data always brings one more surprise.
+\end{ojo}
+
+\begin{concepto}{the algorithm proposes, the expert validates}
+Automatic labels are a \emph{draft}: ``melt-crystallization-Nb'' is useful, but you as the
+expert will refine it into ``Petrogenesis of rare-metal granites''. That division of labour
+(machine proposes, human curates) is exactly how these tools are used in serious research.
+\end{concepto}
+
+\begin{resumen}
+c-TF-IDF names each cluster with its characteristic words (frequent inside, rare outside), by
+gluing each cluster into a mega-document. Your 3 subtopics: pegmatite geology, lepidolite
+flotation, and economy/recycling (with the off-topic ones in quarantine).
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 16 : The interactive bubble map (Plotly) and the slider trick}
+\cabecera{16}{The interactive bubble map (Plotly) and the slider trick}
+
+\section{What we built}
+
+The star deliverable of Phase 3: the \textbf{interactive bubble map} of your 126 papers. It
+exists in two forms, fed by the same code:
+\begin{enumerate}
+  \item \codigo{3\_Resultados/topic\_map.html}: a self-contained file. Double click and it
+        opens in any browser, no server needed. Shareable.
+  \item The \textbf{Topic map} tab of your web app (\codigo{app.py}), with live controls.
+\end{enumerate}
+
+What you see: one dot per paper, one colour per subtopic (geology blue, flotation green,
+economy/other orange, noise grey), size $=$ citations, each subtopic's label floating over its
+cloud, and on hover: title, authors, year, citations.
+
+\begin{concepto}{Plotly}
+A library for \textbf{interactive} charts: instead of a fixed image (matplotlib), it produces
+HTML $+$ JavaScript with zoom, pan, tooltips and a clickable legend ``for free''. That is why
+the map can be saved as a file and opened anywhere: the browser does the work.
+\end{concepto}
+
+\begin{concepto}{one figure, two faces (architecture)}
+The \codigo{bubble\_figure()} function in \codigo{froth/visualize.py} builds the figure, and
+TWO clients reuse it: \codigo{plot\_bubbles()} saves it as HTML, and \codigo{app.py} shows it
+in Streamlit. If tomorrow you improve the map, it improves in both places at once. General
+principle: \emph{you do not duplicate the engine; you wrap it}.
+\end{concepto}
+
+\section{The granularity slider trick}
+
+The web app has a ``min papers per subtopic'' slider that re-groups the map \textbf{instantly}.
+How can it be so fast, if the pipeline takes time?
+
+\begin{concepto}{separating the slow from the fast}
+The pipeline has two very different parts:
+\begin{itemize}
+  \item \textbf{Slow}: UMAP (arranging 126 points down from 768D). Computed ONCE and cached.
+  \item \textbf{Fast}: HDBSCAN over the already-arranged 2D points (milliseconds) $+$ relabelling.
+\end{itemize}
+The key: granularity \textbf{does not affect UMAP}, only HDBSCAN. So moving the slider only
+repeats the cheap part. Identifying what can be cached and what must be recomputed is a core
+data engineering skill, and you have just used it.
+\end{concepto}
+
+\begin{ojo}
+Granularity is a \textbf{reading decision}, not a truth: with a low value you will see many
+small subtopics (more detail, more fragmentation); with a high value, a few big ones (more
+synthesis). There is no ``correct number of clusters'', there is the one that best tells the
+story for your purpose. That is why it is your slider and not a hidden constant.
+\end{ojo}
+
+\section{Where we stand against the competition}
+
+With this map we reach visual and interactive \textbf{parity} (hover, zoom, filters, size by
+citations) with Connected Papers, Litmaps or VOSviewer. And we already have differentiators
+they do not: a map by \emph{content} (not citations), auto-named subtopics, live granularity,
+separable noise, integrated semantic search, and all of it open source. The star
+differentiators (gaps $+$ review draft $+$ task/PDF module) arrive in Phases 4 and 5. The full
+table lives in \codigo{CLAUDE.md}.
+
+\begin{resumen}
+Plotly turns the topic map into an interactive map with two faces (shareable HTML and an app
+tab) from a single function; the granularity slider is instant because it only repeats the
+cheap part (2D HDBSCAN), not the expensive one (UMAP). Parity with the competition: achieved;
+the big differentiators come in Phases 4 and 5.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 17 : The relevance filter: the system cleans itself}
+\cabecera{17}{The relevance filter: the system cleans itself}
+
+\section{The problem YOU spotted}
+
+While validating the map (step 3.7) you saw a cluster labelled \emph{``women, men, commodity,
+masculinities''}. Diagnosis: the papers that infiltrated in Phase 1 (poetry,
+telecommunications, history, from acronym collisions in the searches) dominated the keywords
+of a cluster that also contained legitimate lithium economy papers. The root cause was in the
+\emph{pull}, not in the map.
+
+\section{The elegant fix: measure every paper against the TOPIC}
+
+\begin{concepto}{relevance score}
+We already have all the pieces: each paper has its vector, and the \textbf{title of your
+thesis} can have one too. So: \emph{a paper's relevance} $=$ cosine similarity between its
+vector and the TOPIC's vector. A poetry paper lands far from the title of a flotation thesis
+$\rightarrow$ low score $\rightarrow$ out. The system uses \textbf{its own embeddings to clean
+itself}: no manual rules, no blacklists.
+\end{concepto}
+
+\begin{concepto}{the threshold is dictated by the data, not by intuition}
+Where to cut? We looked at the real distribution of the 126 scores:
+\begin{center}
+\begin{tabular}{ll}
+Infiltrators (poetry, telecom, history...) & 0.495 to 0.543 \\
+\textbf{(natural gap)} & \\
+Everything legitimate (including Li economy) & 0.587 to 0.90 \\
+\end{tabular}
+\end{center}
+There is a \textbf{gap} between 0.543 and 0.587: the threshold
+\codigo{RELEVANCE\_THRESHOLD = 0.55} falls in the middle and separates them perfectly. That is
+how thresholds are chosen seriously: by looking at where the data is already separated, not by
+inventing a nice-looking number.
+\end{concepto}
+
+\section{Where it lives in the code}
+
+\begin{itemize}
+  \item \codigo{embed.py} $\rightarrow$ \codigo{relevance\_to\_topic()}: computes the scores and
+        saves them as a \codigo{relevance} column in \codigo{papers.parquet}.
+  \item \codigo{config.py} $\rightarrow$ \codigo{RELEVANCE\_THRESHOLD = 0.55} (with the
+        reasoning in a comment).
+  \item \codigo{cluster.py} $\rightarrow$ filters BEFORE UMAP: the rubbish does not even take
+        part in the arrangement, so the whole map improves.
+\end{itemize}
+
+\section{What changed on the map (a real data science iteration)}
+
+\begin{itemize}
+  \item The embarrassing labels disappeared; the economy cluster is now honest
+        (\emph{usgs, old scrap} $=$ recycling/commodities).
+  \item A \textbf{4th cluster} emerged that had been buried: literature \textbf{in French}
+        about Nb-Ta-Sn recovery, probably the French school studying Beauvoir. A valuable
+        finding, and a new lesson: \emph{language also groups} (SPECTER puts the French papers
+        together). Future refinement: translate abstracts, or accept that cluster as a valid
+        subtopic?
+  \item The noise went up (9 $\rightarrow$ 21): as the map rearranged, more papers ended up
+        between clouds. That is what your granularity slider is for.
+\end{itemize}
+
+\begin{ojo}
+This is what the real data science cycle looks like: \textbf{build $\rightarrow$ look
+$\rightarrow$ spot something odd $\rightarrow$ diagnose $\rightarrow$ fix $\rightarrow$
+discover something new}. Your expert eye spotted the problem; the embeddings provided the
+solution; and the fix uncovered a finding (the French cluster) that nobody was looking for.
+Every iteration teaches.
+\end{ojo}
+
+\begin{resumen}
+Relevance $=$ cosine(paper, TOPIC); threshold 0.55 chosen from the natural gap in the data;
+filtered before UMAP. Result: a clean map, honest labels and a surprise French cluster about
+Beauvoir. The system cleans itself with its own tools.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 18 : Git and GitHub: save points and cloud backup}
+\cabecera{18}{Git and GitHub: save points and cloud backup}
+
+\section{What Git is}
+
+\begin{concepto}{Git $=$ a save-point machine}
+Like in a video game: every time you reach a state worth keeping, you make a \textbf{commit}
+(``save the game''): Git photographs ALL the project's files at that instant and keeps the
+photo forever, with a date, an author and a message. If you break something tomorrow, you can
+go back to any earlier photo. The history lives in the hidden \codigo{.git} folder. Every
+programmer on the planet uses it, daily.
+\end{concepto}
+
+Minimum vocabulary:
+\begin{itemize}
+  \item \textbf{repo(sitory)}: the project watched over by Git.
+  \item \codigo{git add .}: put files ``in the tray'' for the next photo.
+  \item \codigo{git commit -m "message"}: take the photo.
+  \item \codigo{git status}: see what is in the tray and what changed.
+  \item \textbf{branch}: a line of history. The main one is called \codigo{main}.
+  \item \textbf{remote / origin}: the nickname of the copy in the cloud.
+  \item \codigo{git push}: push your local photos to the cloud.
+\end{itemize}
+
+\begin{concepto}{.gitignore $=$ what NEVER enters the photos}
+A text file with the list of the forbidden: secrets (\codigo{.openalex\_key}), the bubble
+(\codigo{.venv/}), regenerable data (\codigo{2\_Datos/}), downloaded tools (\codigo{tools/}).
+That way the repo carries the \emph{code and the knowledge}, not the dead weight nor the keys.
+We checked with \codigo{git ls-files} that no secret got in: zero.
+\end{concepto}
+
+\section{What GitHub is (and what it is NOT)}
+
+\textbf{GitHub} is the cloud where you back up Git repos, and also your \textbf{public
+portfolio}: anyone can see your code, clone it (\codigo{git clone}) and run it on their PC.
+GitHub \emph{stores} the code; it does not \emph{run} it for the visitor.
+
+Your repo: \codigo{github.com/kmortizva-data/froth}, \textbf{private} for now (GitHub shows
+strangers a 404 so as not to reveal even that it exists). When it is polished:
+Settings $\rightarrow$ Change visibility $\rightarrow$ Public, and the portfolio is born.
+
+\section{What happened your first time (stumbles included, they teach)}
+
+\begin{enumerate}
+  \item \codigo{git init} $+$ \codigo{git add .} $+$ \codigo{git commit} $\rightarrow$ first
+        photo: 65 files, zero secrets.
+  \item \textbf{Stumble 1}: the push failed with ``repository does not seem to exist''. The
+        remote pointed at an example URL whose page had never been created on GitHub. Lesson:
+        \emph{the cloud repo has to be created before you push} (or let GitHub Desktop create
+        it with its \textbf{Publish repository} button, which does both things).
+  \item \textbf{Stumble 2}: \codigo{git remote remove origin} answered ``No such remote'',
+        which meant ``it was already removed'', not a real error. Lesson: read the message;
+        sometimes the ``error'' is just a notice that there was nothing to do.
+  \item \codigo{git branch -M main}: rename \codigo{master} $\rightarrow$ \codigo{main} (the
+        modern standard). Silence from the terminal $=$ success.
+  \item \textbf{Publish repository} in GitHub Desktop $\rightarrow$ it created the cloud repo
+        and pushed. Verified: \codigo{main...origin/main} with no differences $=$ in sync.
+\end{enumerate}
+
+\section{Your routine from now on (the only one you need to memorise)}
+
+At the end of every work session with changes worth keeping:
+\begin{center}
+\codigo{git add .} \quad$\rightarrow$\quad \codigo{git status} (review) \quad$\rightarrow$\quad
+\codigo{git commit -m "what I did"} \quad$\rightarrow$\quad \codigo{git push}
+\end{center}
+(Or in GitHub Desktop: review changes $\rightarrow$ write a summary $\rightarrow$ Commit
+$\rightarrow$ Push. It is the same thing with buttons.)
+
+\begin{resumen}
+Git keeps complete photos of the project (commits) and GitHub backs them up in the cloud and
+displays them as a portfolio; the .gitignore protects secrets and dead weight. Your routine:
+add $\rightarrow$ status $\rightarrow$ commit $\rightarrow$ push. First photo: 65 files, zero
+secrets, already in the cloud.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 19 : Graphs: nodes, edges, hubs and bridges}
+\cabecera{19}{Graphs: nodes, edges, hubs and bridges}
+
+\section{What a graph is}
+
+\begin{concepto}{graph $=$ things $+$ relations}
+Think of your social network: people $=$ \textbf{nodes}, friendships $=$ \textbf{edges} (the
+lines). That structure, things connected by relations, is a \textbf{graph}, and it sits behind
+Google Maps (junctions $+$ streets), LinkedIn (people $+$ contacts) and our mind map (papers
+$+$ ``are related to''). The standard library in Python: \codigo{networkx}.
+\end{concepto}
+
+Four ideas we will use:
+\begin{enumerate}
+  \item \textbf{Weight}: not all relations are equally strong. ``They match at 0.94'' weighs
+        more than ``they match at 0.60'', and the line is drawn thicker.
+  \item \textbf{Direction}: similarity is mutual (an edge with no arrow); citations are not,
+        A cites B, not the other way round (an edge \emph{with} an arrow).
+  \item \textbf{Hub}: a node with a great many connections.
+  \item \textbf{Bridge}: a node or edge connecting two communities that barely touch.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[scale=1.0, every node/.style={circle, inner sep=2pt}]
+  % community A (flotation, green-ish left)
+  \foreach \p/\n in {(0,1)/a1, (0.9,1.7)/a2, (1.0,0.4)/a3, (1.8,1.1)/a4}
+    \fill[litgreen!70] \p circle (5pt) coordinate (\n);
+  \draw[litgreen!70] (a1)--(a2) (a1)--(a3) (a2)--(a4) (a3)--(a4) (a1)--(a4) (a2)--(a3);
+  \node[litgreen] at (0.9,2.3) {\small community A (flotation)};
+  % community B (geology, blue right)
+  \foreach \p/\n in {(5.6,1.0)/b1, (6.5,1.7)/b2, (6.6,0.3)/b3, (7.4,1.0)/b4}
+    \fill[litblue!70] \p circle (5pt) coordinate (\n);
+  \draw[litblue!70] (b1)--(b2) (b1)--(b3) (b2)--(b4) (b3)--(b4) (b1)--(b4) (b2)--(b3);
+  \node[litblue] at (6.5,2.3) {\small community B (geology)};
+  % bridge node
+  \fill[litorange] (3.7,0.9) circle (6pt) coordinate (br);
+  \draw[litorange, thick] (a4)--(br)--(b1);
+  \node[litorange] at (3.7,0.2) {\small \textbf{bridge}};
+  % hub marker: a4 has most connections
+  \node[litgreen] at (2.45,1.55) {\small hub};
+\end{tikzpicture}
+\end{center}
+
+\section{What each one is for in YOUR literature review}
+
+\begin{concepto}{hubs $=$ foundation; bridges $=$ originality}
+\begin{itemize}
+  \item \textbf{The hub} is the compulsory reading: the classic everyone cites. It goes in the
+        introduction of your review, it shows you know the ground. But \emph{everybody knows
+        the hubs}: there is no novelty possible there.
+  \item \textbf{The bridge} connects two topics that barely speak to each other. If only 2
+        papers join ``flotation'' with ``deposit geology'', that frontier is under-explored
+        $\rightarrow$ a new contribution fits there. The \emph{gaps} of Phase 5 are, literally,
+        missing bridges.
+\end{itemize}
+Short answer: hubs to ground yourself, \textbf{bridges to contribute}.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Your thesis IS a bridge.} Look at the title: \emph{``Flotation of ... Li bearing mica
+minerals \textbf{and its impact on} the by-products (Ta, Nb, Be,...) recovery...''}. It
+connects exactly the green cluster (flotation) with the blue one (geology / granite
+by-products). It is not a topic \emph{inside} a community: it is the \emph{frontier} between
+two. That is why it is a thesis and not an assignment. When the network is built, look for
+yourself in it.
+\end{ojo}
+
+\section{Which graph we will build (what comes next)}
+
+\begin{enumerate}
+  \item \textbf{Similarity network} (4.2): each paper connected to its k most similar
+        neighbours by cosine \textbf{in 768D} (the real space, not the 2D map, see Note 12).
+        With a threshold, so it does not come out as a ``hairball''.
+  \item \textbf{Citation network} (4.3): arrows for who cites whom. It requires re-downloading
+        the papers asking for the \codigo{referenced\_works} field that we did not request in
+        Phase 1.
+  \item \textbf{Topic mind map} (4.4): one node per subtopic, edges $=$ how related they are.
+        The presentable view.
+\end{enumerate}
+
+\begin{resumen}
+A graph is nodes $+$ edges (with weight and sometimes direction). Hubs are the classics that
+ground you; bridges are the frontiers where originality lives, and your own thesis is a bridge
+between flotation and geology. We will build similarity, citation and topic networks.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 20 : The similarity network: K neighbours, threshold, and your real hubs and bridges}
+\cabecera{20}{The similarity network: K neighbours, threshold, and your real hubs and bridges}
+
+\section{How the network was built}
+
+Each paper is connected to its \textbf{K most similar papers} (cosine similarity computed in
+the \textbf{original 768D space}, not on the 2D map, which we already know distorts), and only
+connections with a similarity $\geq$ a \textbf{threshold} survive. This is the so-called
+\emph{kNN graph} (k nearest neighbours).
+
+\begin{concepto}{the K and threshold knobs: nobody ``knows'' them, you test them}
+You asked: who says 5 neighbours is ideal? Honest answer: \textbf{nobody}. It is a knob, like
+granularity. The serious way to choose it is to try values and look at the resulting
+structure:
+
+\begin{center}
+\begin{tabular}{rrrrr}
+\textbf{K} & \textbf{lines} & \textbf{conn./paper} & \textbf{pieces} & \textbf{\% across clusters} \\
+\hline
+3 & 281 & 4.7 & 1 & 17\% \\
+\textbf{5} & \textbf{457} & \textbf{7.6} & \textbf{1} & \textbf{21\%} \\
+8 & 702 & 11.7 & 1 & 24\% \\
+15 & 1213 & 20.2 & 1 & 30\% \\
+\end{tabular}
+\end{center}
+
+A high K reveals more crossings between topics (your first neighbours are family; the distant
+ones cross borders) but with 20 connections per paper the drawing is unreadable (a
+``hairball''). Chosen: \textbf{K=5, threshold 0.75}: readable, with visible bridges and the
+network in a single piece. Both live in \codigo{config.py} (\codigo{GRAPH\_KNN},
+\codigo{GRAPH\_SIM\_THRESHOLD}): changing your mind costs one line.
+\end{concepto}
+
+\section{Measuring hubs and bridges (no longer by eye)}
+
+\begin{concepto}{degree and betweenness}
+\begin{itemize}
+  \item \textbf{Hub} $=$ a node with many connections $\rightarrow$ measured by
+        \textbf{degree} (count its edges).
+  \item \textbf{Bridge} $=$ a node the paths between communities run through $\rightarrow$
+        measured by \textbf{betweenness centrality}: how many times a node lies on the
+        shortest path between two others. A paper with \emph{few} connections can be a great
+        bridge if those few join worlds.
+\end{itemize}
+\end{concepto}
+
+\section{The results with YOUR papers}
+
+\textbf{Hubs} (the corpus's compulsory reading):
+\begin{enumerate}
+  \item \emph{The Magmatic-Hydrothermal Transition in Lithium Pegmatites} (24 connections)
+  \item \emph{Electrostatically Controlled Enrichment of Lepidolite via Flotation} (15)
+  \item \emph{Mineral Chemistry of Two-Mica Granite Rare Metals} (15)
+\end{enumerate}
+
+\textbf{Bridges} (where novelty lives), with two big findings:
+\begin{enumerate}
+  \item Among the top 5 bridges is \emph{``Characterization and Liberation Study of the
+        \textbf{Beauvoir Granite}''}: the founding paper of YOUR deposit is a bridge between
+        communities. The network confirms \textbf{with numbers} that your thesis's territory
+        (geology $\leftrightarrow$ processing at Beauvoir) is frontier ground: a measurable
+        originality argument for your introduction.
+  \item 3 of the top 5 bridges had been labelled \textbf{noise} by HDBSCAN. The lesson of Note
+        14 (``noise $\neq$ rubbish; they are generalists between clouds'') held up
+        quantitatively: \emph{yesterday's noise is today's bridges}.
+\end{enumerate}
+
+\section{Where it lives in the code}
+
+\codigo{froth/graph.py}: \codigo{build\_similarity\_graph()} (the network, with per-node
+attributes), \codigo{find\_hubs()} (degree), \codigo{find\_bridges()} (betweenness),
+\codigo{save\_graph()/load\_graph()} (GraphML format in \codigo{2\_Datos/processed/}).
+Run it with \codigo{python -m froth.graph}.
+
+\begin{resumen}
+kNN network: each paper with its K=5 most similar (cosine in 768D), threshold 0.75, knobs
+chosen by testing and stored in config. Degree finds hubs; betweenness finds bridges. Your
+corpus confirmed it: the Beauvoir paper is a bridge, and the ``noise'' was hiding the bridges.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 21 : The topic mind map (and the discovery of the silos)}
+\cabecera{21}{The topic mind map (and the discovery of the silos)}
+
+\section{Going up a level: from papers to topics}
+
+The network of Note 20 has 120 nodes: good for exploring, bad for \emph{presenting}. The
+\textbf{topic mind map} aggregates the information one level up: each \textbf{whole subtopic
+becomes ONE node} (size $=$ number of papers) and the edges summarise the relation between
+subtopics. It is the executive view: 3 or 4 bubbles that tell the whole field.
+
+\begin{concepto}{aggregation: the same network, less resolution}
+This trick, grouping nodes and summarising their relations, is called \emph{aggregation} and
+it is universal: from people $\rightarrow$ departments, from streets $\rightarrow$ cities, from
+papers $\rightarrow$ subtopics. You lose detail, you gain legibility. That is why we keep
+\emph{both} networks: the paper one (to explore) and the topic one (to understand and
+present).
+\end{concepto}
+
+\section{The edges carry TWO numbers (and that is the point)}
+
+Between each pair of subtopics we measure two different things:
+\begin{enumerate}
+  \item \textbf{Similarity} $=$ the average cosine between the papers of one and the other (in
+        768D). ``How related is what they \emph{study}?''
+  \item \textbf{Cross-citations} $=$ how many times a paper in one subtopic \emph{cites} one in
+        the other. ``How much do they \emph{read} each other?''
+\end{enumerate}
+
+\section{The finding: silos (your gap, quantified)}
+
+With your data this came out:
+
+\begin{center}
+\begin{tabular}{lcc}
+\textbf{Relation} & \textbf{Similarity} & \textbf{Cross-citations} \\
+\hline
+Geology $\leftrightarrow$ Flotation & 0.688 & \textbf{1} \\
+Geology $\leftrightarrow$ Economy/recycling & 0.662 & 3 \\
+Flotation $\leftrightarrow$ Economy/recycling & 0.683 & 1 \\
+\end{tabular}
+\end{center}
+
+\begin{ojo}
+Read the first row with a thesis writer's eyes: geology and flotation \textbf{study very
+related things} (0.69 is high) but \textbf{barely cite each other}, 1 citation among 90
+papers! Of the corpus's 116 internal citations, only 5 cross subtopic borders: the communities
+are \textbf{silos}, connected by meaning, separated by habit.
+
+Your thesis (``flotation of Li micas \emph{and its impact on} the recovery of granite
+by-products'') lives exactly in that silence between silos. This is a \emph{gap} that is
+quantified and citable in your introduction: Phase 5 will formalise this detection.
+\end{ojo}
+
+\section{Where it lives in the code}
+
+\codigo{froth/graph.py} $\rightarrow$ \codigo{build\_topic\_graph()}: nodes with
+label / number of papers / citations / centroid, edges with similarity and cross-citations. It
+prints when you run \codigo{python -m froth.graph}; the preview is in
+\codigo{3\_Resultados/topic\_mindmap.png}.
+
+\begin{resumen}
+Aggregating the paper network up to topic level gives the executive view (3 or 4 bubbles).
+Each edge carries similarity (what they study) and citations (what they read), and in your
+corpus they diverge: closely related subtopics that do not cite each other $=$ silos $=$ your
+gap, already with numbers.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 22 : The final views: physics network and circle packing}
+\cabecera{22}{The final views: physics network and circle packing}
+
+\section{Three views, three questions}
+
+Your app now has \textbf{four tabs}, and each view answers a different question:
+
+\begin{center}
+\begin{tabular}{lp{5.2cm}p{4.6cm}}
+\textbf{View} & \textbf{Answers...} & \textbf{Position means...} \\
+\hline
+Topic map (scatter) & What groups are there and how close are they? & Semantic distance (UMAP) \\
+Network & Who connects with whom? Hubs? Bridges? & The physics arranges it; the links are what is real \\
+Packed bubbles & How is the field divided up? (presenting) & \textbf{Nothing}, only membership and size \\
+\end{tabular}
+\end{center}
+
+Knowing \emph{what position means in each view} saves you from over-interpreting: in the
+scatter, closeness IS information; in the packing it is only aesthetics.
+
+\section{The physics network (pyvis)}
+
+\begin{concepto}{force-directed layout}
+The Network tab simulates \textbf{physics}: each link is a \emph{spring} pulling the connected
+papers together, and all the nodes \emph{repel} each other slightly. The system is let go and
+finds equilibrium by itself: heavily connected communities end up together and compact, and
+bridges are left stretched in the middle. That is why \textbf{dragging a node} makes the whole
+network react. The ``animation'' is not decoration, it is the equilibrium being recomputed.
+The library: \codigo{pyvis} (a wrapper around vis.js, a JavaScript engine).
+\end{concepto}
+
+\section{The circle packing (circlify)}
+
+\begin{concepto}{circle packing}
+The Packed bubbles view places one \textbf{big circle per subtopic} and packs one circle per
+paper inside it (area $=$ citations), \textbf{with no overlaps}. Working out where each circle
+goes so they fit tightly is a classic geometry problem; the \codigo{circlify} library solves it
+and we only draw (with Plotly, to keep the hover). It is the ``presentation'' view, the one
+like the EU packaging chart that inspired the project.
+\end{concepto}
+
+\begin{ojo}
+In the packing, two neighbouring papers are NOT more alike than two distant ones: position
+inside the circle is decided by the packing geometry, not by meaning. Membership (which big
+circle) and size (citations) are the only information. Elegant for communicating; not for
+analysing.
+\end{ojo}
+
+\section{Where it all lives}
+
+\begin{itemize}
+  \item \codigo{froth/visualize.py}: \codigo{network\_html()} (self-contained pyvis network),
+        \codigo{packed\_figure()} (packing with circlify $+$ Plotly), and their
+        \codigo{save\_*}/\codigo{plot\_*} versions that write HTML into
+        \codigo{3\_Resultados/}.
+  \item \codigo{app.py}: new \textbf{Network} and \textbf{Packed bubbles} tabs. The network is
+        cached by data version (the same trick as the slider note).
+  \item Shareable files: \codigo{topic\_map.html}, \codigo{paper\_network.html},
+        \codigo{packed\_bubbles.html}. Double click and they open in any browser.
+\end{itemize}
+
+\begin{resumen}
+Three views for three questions: scatter (semantic distances), physics network (connections,
+hubs, bridges, draggable because it is a system of springs) and circle packing (pure
+presentation, position without meaning). All in the app and as shareable HTML files.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 23 : DOI, open access and the reading list}
+\cabecera{23}{DOI, open access and the reading list}
+
+\section{The new feature: from ranking to reading}
+
+The search engine already ranked papers; now it also takes you to \textbf{read} them: each
+result carries two links, \textbf{DOI} (the paper's official page) and \textbf{open PDF} (the
+free PDF, when it exists). In your corpus: \textbf{85 of 126 papers (67\%) have an open access
+PDF} and 116 of 126 have a DOI.
+
+\begin{concepto}{DOI (Digital Object Identifier)}
+The \textbf{DOI} is a paper's permanent ``ID number'': \codigo{10.1016/j...}. The URL
+\codigo{https://doi.org/[DOI]} always leads to the publisher's official page, even if the
+journal changes website. It is the correct way to cite and to reach the text; if the paper is
+paywalled, that is where you use your university access.
+\end{concepto}
+
+\begin{concepto}{open access (OA)}
+A paper is \textbf{open access} when a legally free copy exists: in the journal itself, in
+repositories (arXiv, HAL...) or on the author's university page. OpenAlex tracks where that
+copy is and gives us the URL (\codigo{oa\_url}). We only asked for one more field in the
+pull's \codigo{select} (\codigo{open\_access}), one line of code, and the pipeline regenerated
+everything else by itself.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Linking yes, mass downloading no.} Froth gives you the LINK and you click it: the
+reading happens on your side, with your permissions. Downloading PDFs en masse from publishers
+violates their terms of use (a risk foreseen in the plan from day 1). The serious tools
+(Connected Papers and the like) do exactly this same thing: rank $+$ link.
+\end{ojo}
+
+\section{Bonus of the day: Streamlit's slow watchman}
+
+The app took a long time to start and the log filled up with \codigo{torchvision} warnings.
+Diagnosis: Streamlit's \emph{file watcher} (auto-reload when you edit code) tries to inspect
+the hundreds of \codigo{transformers} modules, one by one. Fix: turn it off in
+\codigo{.streamlit/config.toml} (\codigo{fileWatcherType = "none"}). Double lesson: (1) a noisy
+log is not always a fatal error, you have to read WHAT it says; (2) comfortable development
+tools sometimes cost performance.
+
+\begin{resumen}
+Every search result now links to the DOI (official page) and to the open access PDF when one
+exists (67\% of your corpus). We link, we do not mass download. And the app starts faster after
+turning off Streamlit's file watcher.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 24 : What a gap is (and how it is really measured)}
+\cabecera{24}{What a gap is (and how it is really measured)}
+
+\section{Why they matter}
+
+Every thesis has to contribute something new, and ``new'' almost always means \textbf{working
+where others have not worked}. The problem: the phrase ``research gap'' is used a lot and
+measured little, it is usually the supervisor's hunch. Froth's differentiator is turning the
+gap into a \textbf{measurable signal over the data}, with evidence you can cite.
+
+\section{The 4 measurable types of gap}
+
+\begin{concepto}{1. The SILO (the most valuable)}
+Two communities studying \textbf{very similar} things that \textbf{do not cite each other}:
+they work back to back. It is measured by subtracting two matrices we already have: semantic
+similarity between clusters (high) vs.\ cross-citations (low). \textbf{Your corpus has one}:
+geology $\leftrightarrow$ flotation $=$ similarity 0.69 with \textbf{a single cross-citation}
+(Note 21). Two worlds talking about the same granite without talking to each other. Whoever
+connects those worlds contributes.
+\end{concepto}
+
+\begin{concepto}{2. The SPARSE ZONE}
+Empty regions of the map \emph{between} dense clouds: combinations of topics nobody touched.
+It is measured with spatial density in the embedding space (how many papers live between the
+centroid of A and that of B?).
+\end{concepto}
+
+\begin{concepto}{3. The SCARCE BRIDGE}
+Between two clusters there are only 1 or 2 bridge papers (Note 20's betweenness concentrated
+in very few nodes). If crossing that bridge produces value and almost nobody has crossed it,
+there is room for more travellers.
+\end{concepto}
+
+\begin{concepto}{4. The DORMANT TOPIC}
+A subtopic whose papers are all old: knowledge nobody revisits with modern methods. It is
+measured with the distribution of years per cluster (when was the last paper?).
+\end{concepto}
+
+\section{The warning: mine or desert}
+
+\begin{ojo}
+A hole can be empty for two reasons: because \textbf{nobody explored it} (a mine waiting) or
+because \textbf{there is nothing to find} (a desert, sometimes the combination of topics is
+sterile for good physical or economic reasons). \textbf{No algorithm tells one from the
+other.} That is why Froth \emph{proposes candidates with evidence} and the expert decides.
+Distrust any tool promising ``guaranteed automatic gaps''; ours promises honest candidates
+with their numbers.
+\end{ojo}
+
+\section{Your thesis is already the proof of concept}
+
+The thesis title (flotation of Li micas \textbf{and its impact on} the recovery of by-products
+from the Beauvoir granite) exploits \emph{exactly} silo \#1: it joins the flotation cluster
+with the geology one. Your supervisor found that gap by eye and by experience; Froth found it
+with numbers: high similarity, one cross-citation, and the Beauvoir characterisation paper as
+a lone bridge (Note 20). That double confirmation (expert $+$ data) is the strongest validation
+the method can have.
+
+\section{What comes next (5.1)}
+
+Implement the four signals in \codigo{gaps.py} $\rightarrow$ \codigo{find\_gaps()} will return
+a ranked table: each candidate gap with its type, its evidence (similarity, citations,
+density, years) and the frontier papers already circling it. Afterwards (5.2), the review
+draft will cite those gaps with numbers, not with hunches.
+
+\begin{resumen}
+A measurable gap has 4 shapes: silos (alike but not citing each other), sparse zones, scarce
+bridges and dormant topics. The tool proposes candidates with evidence; the expert tells mines
+from deserts. Your own thesis is the Beauvoir geology-flotation silo, now confirmed with
+numbers.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 25 : From theory to text: find\_gaps() and the review draft}
+\cabecera{25}{From theory to text: find\_gaps() and the review draft}
+
+\section{What we built (5.1 $+$ 5.2)}
+
+The two halves of the differentiator, already working in \codigo{froth/gaps.py}:
+\begin{enumerate}
+  \item \codigo{find\_gaps()}: turns the 4 types from Note 24 into measured signals
+        $\rightarrow$ a ranked table with evidence
+        (\codigo{2\_Datos/processed/gaps.parquet}).
+  \item \codigo{draft\_review()}: writes the scaffolding of the literature review
+        (\codigo{3\_Resultados/review\_draft.md}) with \textbf{100\% traceable citations}.
+\end{enumerate}
+They run together: \codigo{python -m froth.gaps}.
+
+\section{The gaps in YOUR corpus (real results)}
+
+\begin{center}
+\begin{tabular}{lp{6.2cm}l}
+\textbf{Type} & \textbf{Top candidate} & \textbf{Evidence} \\
+\hline
+Silo & commodities/criticals $\leftrightarrow$ flotation & sim 0.69, \textbf{1} cross-citation \\
+Silo & flotation $\leftrightarrow$ geology (\emph{your thesis}) & sim 0.70, 3 cross-citations \\
+Scarce bridge & commodities $\leftrightarrow$ geology & only 8 bridges despite sim 0.67 \\
+Dormant & (none: hot field, 2025-26 papers) & the tool says so honestly \\
+\end{tabular}
+\end{center}
+
+A close reading of the champion silo: the \emph{criticality / supply chain} literature and the
+\emph{processing} literature barely cite each other. Connecting them (``my flotation matters
+for Li/Ta supply security'') is direct ammunition for introductions and proposals.
+
+\begin{ojo}
+The weakest signal is the \textbf{sparse zone}: it measures \emph{absences}, and a void does
+not explain its reason (mine or desert?), on top of inheriting the distortions of the 2D map
+(Note 12). That is why it is labelled ``experimental'' in the code and in the draft. General
+rule: distrust metrics about what is missing more than metrics about what exists.
+\end{ojo}
+
+\section{The draft: why a template and not an LLM}
+
+\begin{concepto}{traceable citations or nothing}
+The draft is generated with a \textbf{deterministic template}: each section is born from the
+MEASURED structure (sections $=$ clusters; must-reads $=$ most cited $+$ local hubs; novelties
+$=$ most recent; holes $=$ gaps with their numbers) and every statement points at real papers
+with a numbered reference [n] $\rightarrow$ a final list with author/year/title/DOI. An LLM
+would write more elegantly... and sooner or later it would \emph{invent} a reference, the
+capital sin in academia. Correct order: first the trustworthy scaffolding, then (optionally) an
+LLM that polishes the prose while \emph{verifying} every citation against the corpus.
+\end{concepto}
+
+\section{Against the competition (a different neighbourhood)}
+
+Here the rivals are not the mappers but Elicit/SciSpace/Consensus (an LLM synthesising
+\emph{without} knowing the corpus structure), Scholarcy (one-to-one summaries) and plain
+ChatGPT (hallucinated references). \textbf{Nobody joins map and text}: our draft says ``these
+two subtopics share 0.69 similarity and a single cross-citation'' because it measured it.
+Honest limit: we work with abstracts (Elicit extracts from full text) $\rightarrow$ ours is a
+\emph{structured scaffolding}, not final prose.
+
+\begin{resumen}
+find\_gaps() produces ranked candidates with evidence (silos at the front: commodities-
+flotation 0.69 with 1 citation; your thesis reconfirmed at 0.70 with 3); draft\_review() turns
+them into a review scaffolding with 26 traceable references, with no LLM. Nobody else joins
+map and text.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 26 : Task mode from the inside: chunking and averaging (mean pooling)}
+\cabecera{26}{Task mode from the inside: chunking and averaging (mean pooling)}
+
+\section{The problem you cannot see}
+
+Task mode accepts whole instruction PDFs. But SPECTER (like almost every embedding model) only
+``reads'' about \textbf{512 tokens} ($\approx$ 350 to 400 words): anything beyond that it
+\textbf{truncates silently}. If you gave it a 10-page PDF, the vector would represent... the
+first page. The rest, ignored with no warning. This kind of silent limit is a classic trap of
+language models.
+
+\section{The fix: chunk and average}
+
+\begin{concepto}{chunking $+$ mean pooling}
+\codigo{embed.embed\_texts\_mean()} does two steps:
+\begin{enumerate}
+  \item \textbf{Chunking}: it splits each text into pieces of $\sim$180 words (comfortably
+        below the limit).
+  \item \textbf{Mean pooling}: it vectorises each piece and computes the \textbf{average} of
+        all the vectors $\rightarrow$ a single vector representing the COMPLETE document.
+\end{enumerate}
+The geometric intuition: each piece is a point on the map of meaning; the average is the
+\emph{centre of gravity} of all of them, the mean position of what the document is about.
+\end{concepto}
+
+\begin{ojo}
+Averaging also \emph{dilutes}: if the PDF mixes very different topics, the centre of gravity
+falls ``between'' them and may not represent any of them well. For task instructions
+(thematically coherent) it works very well; for miscellany documents you would have to group
+the pieces by topic first. A known and accepted limitation.
+\end{ojo}
+
+\section{The real test}
+
+Simulated brief: \emph{``technical report comparing collectors for lepidolite flotation and
+their selectivity against feldspar and quartz gangue''} (repeated until it forced several
+chunks). Result: a top-5 of pure collector papers, headed by the LCJ collector one (similarity
+0.897). The centre of gravity landed exactly where it should.
+
+\begin{resumen}
+Embedding models truncate at $\sim$512 tokens silently; task mode dodges this by chunking the
+text and averaging the vectors (mean pooling $=$ the centre of gravity of the meaning). Tested:
+a collectors brief returns collector papers.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 27 : Recommended granularity: let the data choose (DBCV)}
+\cabecera{27}{Recommended granularity: let the data choose (DBCV)}
+
+\section{The question that started this}
+
+``I want a \emph{set to recommended} button with a REAL statistical reason: not a standard
+value, but one computed every time.'' Exactly the right attitude: fixed defaults are opinions;
+the data changes with every corpus.
+
+\section{The right metric: DBCV}
+
+\begin{concepto}{DBCV (Density-Based Cluster Validity)}
+To evaluate a \emph{density-based} clustering (HDBSCAN) not just any metric will do: the famous
+\emph{silhouette}, for instance, assumes round, compact clusters. \textbf{DBCV} is the family's
+native metric: it rewards clusterings whose groups are \textbf{dense inside} and
+\textbf{well separated outside}, respecting irregular shapes.
+In code: \codigo{hdbscan.HDBSCAN(gen\_min\_span\_tree=True).relative\_validity\_}.
+\end{concepto}
+
+\begin{concepto}{the sweep}
+\codigo{cluster.recommend\_min\_cluster\_size()} tries EVERY granularity from 3 to 20, computes
+the DBCV validity of each, discards the degenerate ones (a single cluster is not a clustering)
+and returns the winner plus a diagnostic table. With today's enlarged corpus: recommended
+$= 7$ (validity 0.51). If the corpus changes tomorrow, it recomputes by itself (cached by data
+version).
+\end{concepto}
+
+\begin{ojo}
+The recommendation is a \emph{statistical optimum}, not a final truth: it optimises density and
+separation, not ``which story serves the expert''. That is why the slider is still there,
+wandering is allowed and the button always brings you back. Machine proposes; human disposes
+(the pattern of all of Froth).
+\end{ojo}
+
+\begin{resumen}
+The ``Use recommended'' button does not store a magic number: it sweeps granularities and picks
+the one maximising DBCV, the native quality metric of density-based clustering, recomputed for
+each corpus. Real statistics, with the slider free for exploring.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 28 : Multi-source connectors: your institutional account joins the game}
+\cabecera{28}{Multi-source connectors: your institutional account joins the game}
+
+\section{Why OpenAlex alone is not enough}
+
+OpenAlex is huge ($\sim$250M works) but it does not have everything, and sometimes it is
+missing abstracts. The idea: let the user \textbf{connect their own accounts} (``Connect with
+Google'' style) and see papers the free database does not bring.
+
+\section{The connectors (froth/sources.py)}
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Source} & \textbf{Requires} & \textbf{What it adds} \\
+\hline
+OpenAlex & nothing (key optional) & the BASE: abstracts $+$ references \\
+Crossref & just an email & massive publisher metadata \\
+Semantic Scholar & FREE key (optional) & abstracts $+$ open access PDFs \\
+Scopus (Elsevier) & institutional key & Elsevier's curated catalogue \\
+ResearchGate & \multicolumn{2}{l}{\textbf{NO}: no public API; its ToS forbids scraping} \\
+\end{tabular}
+\end{center}
+
+Design principles:
+\begin{itemize}
+  \item \textbf{OpenAlex rules}: it is the preferred record (the richest); the extras only ADD
+        papers we did not have.
+  \item \textbf{Dedup by DOI and then by normalised title}: the same paper arrives through
+        several sources and must count once.
+  \item \textbf{Soft failure}: if a source is down or rate-limits you, it says so and the pull
+        carries on with the others. A connector never takes the harvest down.
+  \item \textbf{The keys are yours and local}: they live in \codigo{.froth\_keys}
+        (gitignored). On the public website they will live only in your browser session.
+        Froth never holds other people's keys on a server.
+\end{itemize}
+
+\section{The first multi-source harvest (real numbers)}
+
+\begin{itemize}
+  \item Crossref: 227 raw results $\rightarrow$ the dedup recognised \textbf{58 duplicates} of
+        OpenAlex and contributed \textbf{169 new ones} (after the abstract filter: corpus 126
+        $\rightarrow$ \textbf{157}).
+  \item Semantic Scholar without a key: immediate rate limit $\rightarrow$ it \textbf{failed
+        softly} exactly as designed (with the free key it is stable).
+  \item The enlarged corpus revealed an \textbf{emerging subtopic}: bubble and fine-particle
+        physics ($+$ bastnaesite), buried before, now a cluster of its own. More data
+        $\rightarrow$ more resolution on the map.
+  \item The relevance filter discarded only 6: the extra harvest came in clean. The
+        self-washing of Note 17 scaled without being touched.
+\end{itemize}
+
+\begin{resumen}
+sources.py adds Crossref/S2/Scopus to OpenAlex with DOI-then-title dedup and soft failure; the
+keys are local and the user's (the ``Connect institutional account'' panel). First harvest:
+$+31$ net papers and a new subtopic emerged. ResearchGate is out by design (no legal API).
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 29 : Phase 6: generalising is not training (and the multi-topic engine)}
+\cabecera{29}{Phase 6: generalising is not training (and the multi-topic engine)}
+
+\section{The clarification that opens the phase}
+
+The plan: ``iterate over each of the cohort's 22 titles and keep training''. Right in spirit,
+but those are \textbf{two different acts}:
+
+\begin{concepto}{generalising (6.1 to 6.3) vs.\ training (6.5)}
+\begin{itemize}
+  \item \textbf{Iterating the 22 titles trains NOTHING}: the model (SPECTER) does not change a
+        single weight. What gets hardened is the \textbf{code}: every odd title that breaks
+        something forces a fix. It is the 1$\rightarrow$2$\rightarrow$22 ladder from the
+        original plan.
+  \item \textbf{Really training} (6.5) does change the model's weights: fine-tuning SPECTER
+        with the thousands of abstracts accumulated from the 22 corpora. PyTorch, loss, epochs,
+        on the RTX 5060 GPU (confirmed capable).
+\end{itemize}
+The two acts feed each other: generalising produces the training dataset.
+\end{concepto}
+
+\section{The multi-topic engine (6.1)}
+
+Until yesterday the topic lived \emph{nailed} into \codigo{config.py}. Now:
+
+\begin{concepto}{config.set\_topic(title)}
+One call re-points the WHOLE engine: it derives new search terms and moves the data paths into
+a folder of their own (\codigo{2\_Datos/topics/<slug>/}). It works because each module reads
+\codigo{config.*} \emph{at execution time}, not at import time, a design detail that paid
+dividends. (A classic trap caught: \codigo{def f(x=config.TOPIC)} freezes the value at import;
+it was corrected to \codigo{x=None} plus resolving inside.)
+\end{concepto}
+
+\begin{concepto}{derive\_search\_terms(): from title to searches}
+Topic 1's terms were written by hand. For ANY title, the heuristic in \codigo{froth/terms.py}:
+it strips filler words (``innovative approaches for the...''), keeps \textbf{real phrases from
+the title} (consecutive bigrams and trigrams: \emph{froth flotation}, \emph{scheelite ores},
+\emph{Quantitative XRD}), respects \textbf{acronyms} (XRD, LIBS, NiMH) and extracts the
+\textbf{content of brackets} (that is where the elements and deposits live). Deterministic, no
+dependencies. The local LLM layer (Ollama) will come on top as an optional refiner, a decision
+already taken: local, private, free.
+\end{concepto}
+
+\section{The 1\texorpdfstring{$\rightarrow$}{->}2 milestone (tested)}
+
+The full pipeline on \emph{``scheelite ores by froth flotation''} \textbf{without touching
+code}: 47 papers, its own folder, and clusters that make metallurgical sense (Falcon
+concentrator, SNF reagents, frothers). And the test paid off immediately:
+
+\begin{ojo}
+\textbf{What the 2nd topic taught} (this is why the ladder exists):
+\begin{enumerate}
+  \item The keyword ``nbsp'' gave away that Crossref abstracts carry \textbf{HTML entities}
+        ($\&$nbsp;). The cleaner now does \codigo{html.unescape}.
+  \item The \codigo{.gitignore} did not cover the new per-topic folders. The data nearly ended
+        up on GitHub.
+  \item On small corpora (47 papers) a fixed granularity of 8 leaves too much noise
+        $\rightarrow$ the pipeline now accepts \codigo{min\_cluster\_size="auto"} (chosen by
+        DBCV, Note 27, per corpus).
+\end{enumerate}
+Three real fixes from ONE new title. The 22 in the batch will find more, and that is exactly
+their job.
+\end{ojo}
+
+\section{The parade (6.2)}
+
+\codigo{froth/batch.py} reads the 22 cohort titles from the CSV and runs the pipeline for each
+one, with a robustness report per topic (papers, relevant, clusters, noise, granularity chosen,
+seconds, status). Defensive design: the report is saved after \textbf{every} topic and later
+runs \textbf{resume} where they left off (a rate limit loses nothing). Failures do not stop the
+parade: they stay as FAILED in the table, and that table is the fix-it agenda for 6.3.
+
+\begin{resumen}
+Iterating titles hardens the code (generalising); changing weights is training (6.5). The
+engine is already multi-topic (set\_topic $+$ derived terms $+$ per-topic folders), tested with
+scheelite ores, which threw in 3 fixes along the way. The batch of 22 runs with resume and a
+per-topic report: its failure table is the work plan for 6.3.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 30 : The birth of specter-mineral: your first real training run}
+\cabecera{30}{The birth of specter-mineral: your first real training run}
+
+\section{What happened (in 83 seconds)}
+
+Your RTX 5060 took generic SPECTER and \textbf{fine-tuned} it with the $\sim$1,250
+title$\leftrightarrow$abstract pairs of the master corpus: 2 epochs, 160 steps, batches of 16.
+The result lives in \codigo{models/specter-mineral}, an embedding model that speaks the dialect
+of mineral processing. On CPU it would have been hours; on your GPU, 83 seconds.
+
+\section{The concepts you have just used}
+
+\begin{concepto}{fine-tuning $\neq$ training from scratch}
+We did not build a new model: we took SPECTER's weights (which already know how to ``read
+papers'') and \textbf{nudged them gently} towards your domain. Like a generalist geologist
+taking a specialisation, they do not go back to primary school.
+\end{concepto}
+
+\begin{concepto}{the elegant move: self-supervision with MNRL}
+Training usually demands human labels (``these two texts are alike''). We labelled NOTHING. The
+trick: \textbf{MultipleNegativesRankingLoss}. In each batch of 16 papers, a paper's title must
+end up closer to \emph{its own} abstract than to the other 15 in the batch. Free positives (a
+paper's title and abstract talk about the same thing) and free negatives (the rest of the
+batch). A flat corpus becomes a training dataset without lifting a finger.
+\end{concepto}
+
+\begin{concepto}{the vocabulary of training}
+\begin{itemize}
+  \item \textbf{loss}: the number measuring ``how wrong the model is''; training $=$ pushing the
+        weights to bring it down.
+  \item \textbf{step}: processing one batch and adjusting the weights once. You saw ``160 steps''.
+  \item \textbf{epoch}: one complete pass over the whole dataset. We did 2.
+  \item \textbf{warmup}: the first steps with very gentle adjustments, so as not to wreck what
+        the model already knew.
+  \item \textbf{mixed precision (amp)}: arithmetic in lower-precision numbers where it does not
+        matter, part of the reason for the speed on GPU.
+\end{itemize}
+\end{concepto}
+
+\begin{ojo}
+\textbf{The stumbles teach too}: the training failed TWICE before it started. First
+\codigo{datasets} was missing, then \codigo{accelerate} (the Hugging Face Trainer's kit).
+Ecosystem lesson: in modern ML, ``installing the library'' is rarely enough; the training stack
+is its own beast. Both went into requirements.txt for good. And before that: pip refused to
+swap torch CPU$\rightarrow$CUDA because ``the version was already satisfied'' (same number,
+different variant), solved with \codigo{--force-reinstall --no-deps}.
+\end{ojo}
+
+\section{How we judge whether it was worth it (6.6)}
+
+A new model is not better just for existing. \codigo{froth/compare.py} puts BOTH models
+through the same exam over the 22 topics: same corpora, same UMAP (fixed seed), granularity
+chosen by DBCV. Who produces more valid clusters? It also exports a \textbf{blind test}: two
+A/B cluster listings with the key hidden, so the expert (you) can judge without knowing which
+is which. If specter-mineral does not win, that is ALSO an honest and publishable result.
+
+\begin{resumen}
+Fine-tuning $=$ pushing existing weights towards your domain; MNRL turns the corpus into a
+dataset with no labelling (your title must love your abstract more than other people's); 83s on
+your GPU after two dependency stumbles. The verdict comes from DBCV over 22 topics and your
+blind test, not from enthusiasm.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 31 : The fine-tuning verdict: specialisation, not magic}
+\cabecera{31}{The fine-tuning verdict: specialisation, not magic}
+
+\section{The experiment (6.6)}
+
+Two models competed over the cohort's 22 corpora with the SAME exam (same data, same UMAP seed,
+granularity chosen by DBCV): generic SPECTER against \textbf{specter-mineral}, your model
+fine-tuned in 83 seconds of GPU with $\sim$1250 title$\leftrightarrow$abstract pairs.
+
+\section{The numbers (the story is in the variance)}
+
+\begin{itemize}
+  \item \textbf{specter-mineral won 14 of 22 topics} on DBCV validity.
+  \item But the \emph{mean} delta was $+0.007$ with $\sigma = 0.170$, a flat average hiding a
+        strong pattern:
+  \item \textbf{It won big in the core of the domain}: hydrometallurgical recycling ($+0.30$),
+        XCT slags ($+0.24$), Beauvoir core imaging ($+0.20$), your thesis ($+0.05$).
+  \item \textbf{It lost at the periphery}: geopolymer mortars ($-0.43$), refinery simulation
+        ($-0.27$), AI on conveyor belts ($-0.21$).
+\end{itemize}
+
+\begin{concepto}{the lesson: a small fine-tune specialises towards the centre of mass}
+With little data, fine-tuning does not ``improve the model in general'': it \textbf{drags it
+towards where the mass of the training corpus is} (flotation/geology). Topics near that mass
+gain resolution; distant ones lose it. Open hypothesis (your natural next experiment): does the
+2$\times$ corpus with Scopus reduce the peripheral penalty?
+\end{concepto}
+
+\section{The double blind (your moment)}
+
+Two cluster listings from the Beauvoir corpus, labelled A/B at random, key hidden. You chose
+\textbf{B} ``because it separated fines flotation from lepidolite collector chemistry'', and B
+was \textbf{your model}. Metric and expert agreed on the domain you master: the strongest
+validation available.
+
+\begin{ojo}
+A ``no improvement on average'' with clear structure (wins here, loses there, and we know why)
+is a BETTER scientific result than an unexplained ``$+2\%$ everywhere''. Do not inflate:
+qualify.
+\end{ojo}
+
+\begin{resumen}
+14 wins out of 22, mean delta $\approx 0$, large $\sigma$: a small fine-tune specialises
+towards the core of the corpus at the cost of the periphery, confirmed by the metric (DBCV) and
+by a double-blind test where you picked your own model without knowing it.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 32 : h-index per cluster: how many papers are ``must-reads''}
+\cabecera{32}{h-index per cluster: how many papers are ``must-reads''}
+
+\section{The problem (your own no-magic-numbers rule)}
+
+In the reading guide we wanted to mark the must-reads of each subtopic. Top 3? No: ``top 3''
+is a magic number, just as arbitrary for a cluster of 110 geology papers as for one of 9 on
+tomography. You asked to \emph{research how to research} it: a threshold computed \textbf{per
+corpus and per cluster}.
+
+\section{The idea stolen from bibliometrics: the h-index}
+
+The h-index was invented to measure researchers, but the definition works on ANY list of
+citation counts:
+
+\begin{concepto}{h-index of a cluster}
+The largest $h$ such that the cluster has $h$ papers with at least $h$ citations each. You sort
+by descending citations and look for the point where the rank overtakes the citations: right
+there the evidence stops holding itself up.
+\end{concepto}
+
+Why it is elegant: \textbf{the cluster sets its own yardstick}. A heavily cited cluster demands
+hundreds of citations to enter the must-read list; a young one settles for dozens. Zero
+parameters to tune.
+
+\section{The real Beauvoir data}
+
+\begin{itemize}
+  \item Geology/granites (110 papers) $\rightarrow$ $h = 35$: mature literature, the bar set
+        itself very high.
+  \item XCT tomography (9 papers) $\rightarrow$ $h = 3$: a young niche, a proportional bar.
+  \item USGS reports (mostly with 0 to 2 citations) $\rightarrow$ the h-index degenerates
+        ($h > n/2$, it would mark ``almost everything is a must-read''): that is where the
+        \textbf{head/tail breaks fallback} comes in. It cuts at the cluster's mean citation
+        count, which in long-tailed distributions separates the heavy head from the rest
+        ($\rightarrow$ 7).
+\end{itemize}
+
+\begin{ojo}
+Citations $\neq$ quality: they measure accumulated attention and they punish the recent (the 59
+papers from 2025 to 2027 with 0 citations are fresh research, not bad research). The must-read
+says ``this is the canon the field expects you to have read'', not ``this is the only thing
+worth anything''.
+\end{ojo}
+
+\section{Where this rule lives (and a lesson from 2026-08-03)}
+
+Until today this note described a fallback that had \textbf{never been implemented}: the
+h-index was in the code, the mean cut was not. It was implemented while building the
+Obsidian export, in \codigo{froth/export\_obsidian.py} (\codigo{\_must\_reads} and
+\codigo{\_mean\_cut}).
+
+\begin{ojo}
+\textbf{A small deviation broke the whole rule.} While programming it, Claude repeated the
+mean cut \emph{up to six times} instead of doing it ONCE, thinking that would be more
+selective. Measured effect on your thesis corpus: the 340-paper subtopic holds a classic
+with 4,250 citations that drags the mean, and repeating the cut strangled the list down to
+\textbf{1 paper}. With a single cut it gives 36. In total, the repeated version left 2
+papers or fewer in \textbf{20 of the 29 subtopics with 30+ papers}; this note's rule does
+that in none of them.
+
+The lesson: when a note fixes a method, the code has to follow it \emph{literally}. ``I made
+it a bit stricter'' is not an improvement, it is a different method, and it has to be
+measured before being called better.
+\end{ojo}
+
+Current figures with the correct rule: thesis corpus, 3,867 papers in 104 subtopics
+$\rightarrow$ 893 must-reads (median 6 per subtopic, none left short).
+
+\begin{resumen}
+Must-reads with no magic numbers: an h-index per cluster (self-calibrated to each subtopic's
+maturity) with a head/tail breaks fallback for when the citations are too flat for the h-index
+to discriminate.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 33 : Calibrated springs and frontier papers: what position means in the network}
+\cabecera{33}{Calibrated springs and frontier papers: what position means in the network}
+
+\section{Your question: ``do the springs mean anything?''}
+
+In the Network view the nodes arrange themselves with a \textbf{force layout} (forceAtlas2):
+each edge is a spring pulling things together, and all the nodes repel each other like charges.
+The equilibrium of that tug of war decides the position. By default vis.js uses the SAME spring
+length for every edge, so visual distance was pure aesthetics.
+
+\section{The calibration: length $=$ dissimilarity}
+
+Our edges already carry a weight $w$ $=$ cosine similarity (with a 0.75 threshold). Now each
+spring is made to measure:
+\[
+\mathrm{length} = 60 + 420\,(1 - w)
+\]
+Nearly identical neighbours ($w \to 1$) end up $\sim$60 px apart; the ones that barely passed
+the threshold, $\sim$165 px. Since that change, \textbf{close on screen $\approx$ close in
+meaning}. The network answers the same question as the UMAP map, but with the connections made
+explicit.
+
+\section{The mystery of the ``yellow node stuck to the blue hub''}
+
+You noticed nodes of one colour sitting inside another's territory. It was not a bug: they were
+\textbf{frontier papers}. The chain of events:
+
+\begin{enumerate}
+  \item HDBSCAN cuts the clusters on the \textbf{2D} UMAP map.
+  \item The network connects neighbours in the original \textbf{768D}.
+  \item A paper can fall on the yellow side of the 2D cut while having almost all its semantic
+        neighbours in the blue cluster $\rightarrow$ the springs drag it towards the blue.
+\end{enumerate}
+
+\begin{concepto}{frontier paper detection}
+For each node we count its neighbours' clusters. If $\geq 60\%$ belong to ANOTHER cluster, it
+is a frontier paper: it is drawn with a \textbf{dashed ring in the neighbouring cluster's
+colour} and the tooltip declares it (``bridges into the neighboring subtopic''). In Beauvoir:
+3 out of 237 papers.
+\end{concepto}
+
+\begin{ojo}
+Frontier papers are not clustering errors: they tend to be the interdisciplinary ones, exactly
+those connecting subtopics. For a reader hunting research gaps, they are among the most
+interesting on the map.
+\end{ojo}
+
+\begin{resumen}
+Springs with length $= 60 + 420(1-w)$: visual proximity now IS semantic distance. The
+``misplaced'' nodes are frontier papers (most of their neighbours in another cluster), now
+marked with a dashed ring in the neighbour's colour.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 34 : Extractive vs abstractive summarising: why ours cannot hallucinate}
+\cabecera{34}{Extractive vs abstractive summarising: why ours cannot hallucinate}
+
+\section{The Phase 7 problem}
+
+Review v1 is an honest but dry scaffolding: keywords $+$ lists of papers. For it to actually
+\emph{say} something there are two routes, and the difference between them is THE most
+important design decision of this phase.
+
+\begin{concepto}{extractive vs abstractive}
+\textbf{Abstractive}: a model GENERATES new text that ``sounds like'' a summary (ChatGPT,
+Elicit). Fluent, but the text exists in no source: it can invent statements and, worse,
+references. \\
+\textbf{Extractive}: the system SELECTS real sentences that already exist in the abstracts.
+Less fluent, but every sentence has a source paper: the citation is traceable \emph{by
+construction}. Hallucinating is impossible: not a single word is generated.
+\end{concepto}
+
+\section{Why we chose extractive first}
+
+\begin{itemize}
+  \item \textbf{Trust}: an academic review with ONE invented reference is dead. Plain ChatGPT
+        is famous for citing papers that do not exist.
+  \item \textbf{Traceability for free}: since the sentence comes from an abstract in the
+        corpus, the ``know more'' button and the [n] citation already work with no extra
+        verification.
+  \item \textbf{It is real ML}: ranking sentences uses embeddings, cosine, graphs and PageRank,
+        everything you already built, at a new scale (sentences, not papers).
+  \item Polishing with an LLM (paraphrasing sentences ALREADY chosen, verifying citations)
+        stays as an OPTIONAL layer on top, never as the base (7.6).
+\end{itemize}
+
+\section{The kitchen: from abstract to usable sentences}
+
+In \texttt{froth/review.py}, \texttt{split\_sentences()} cuts each abstract where there is
+final punctuation followed by a capital letter, and \texttt{\_self\_contained()} discards
+whatever does not survive on its own: fragments ($<$8 words), marathons ($>$60) and sentences
+starting with \textbf{anaphora}, ``This method...'', ``It also...'', because they point at a
+text the review's reader will never see.
+
+\begin{ojo}
+The extractive approach inherits the limitations of its raw material: we work with ABSTRACTS
+(not full text), and a badly written abstract yields mediocre sentences. Review v2 is still an
+improved scaffolding, not final prose. Honesty above all.
+\end{ojo}
+
+\begin{resumen}
+Extractive $=$ selecting real sentences (traceable, no hallucination); abstractive $=$
+generating text (fluent, risky). Froth builds on extractive and leaves the local LLM as an
+optional polisher of already-chosen sentences.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 35 : The centroid sentence: the relevance filter in reverse}
+\cabecera{35}{The centroid sentence: the relevance filter in reverse}
+
+\section{The idea (you already knew it without knowing)}
+
+In Phase 3, the relevance filter measured each paper's cosine against the TOPIC vector and
+\emph{discarded} whatever was far. The centroid sentence uses the SAME mathematics with the
+opposite intention: measure each sentence's cosine against the cluster's centre and
+\emph{crown} whatever is closest.
+
+\begin{concepto}{centroid and representative sentence}
+The \textbf{centroid} of a cluster is the average of its papers' vectors (768D): its ``semantic
+centre of mass''. The abstracts' sentences are vectorised with the SAME model (SPECTER), so
+they live in the same space and are comparable. The sentence with the highest cosine to the
+centroid is the one that best sums up what the subtopic is about, chosen by geometry, not by
+opinion.
+\end{concepto}
+
+\section{The real results (Beauvoir corpus, 237 papers)}
+
+\texttt{python -m froth.review} on your data:
+
+\begin{itemize}
+  \item Geology cluster (``ma, melt, compositions''): score \textbf{0.947} for
+        \emph{``LCT-type granitic pegmatites represent a major global source of
+        lithium...''}, a textbook definition of the subtopic.
+  \item USGS cluster (``usgs, old scrap, year''): \emph{``Minerals Yearbook, These annual
+        publications review the mineral industries of the United States...''} The keywords
+        never told you that cluster is ANNUAL REPORTS; the sentence does.
+  \item Lepidolite flotation cluster: \emph{``Efficient flotation of lepidolite is crucial for
+        the extraction and recycling of lithium resources...''}
+\end{itemize}
+
+This settles your request for meaningful titles (7.1b): keywords to classify, \textbf{centroid
+sentence as a subtitle} to understand.
+
+\section{Two guards against traps}
+
+\begin{itemize}
+  \item \textbf{Per-paper cap} (\texttt{per\_paper\_cap=2}): without it, a very ``central''
+        abstract could monopolise a cluster's entire summary.
+  \item The centroid is computed over the PAPER vectors (the ones on the map), not over the
+        sentences: that way the summary is faithful to the same space the user is looking at.
+\end{itemize}
+
+\begin{ojo}
+The top sentences resemble the centroid... and therefore they resemble EACH OTHER: centroid
+ranking tends towards redundancy (three sentences saying the same thing). That is exactly the
+problem MMR attacks in sub-phase 7.3.
+\end{ojo}
+
+\begin{resumen}
+Centroid sentence $=$ cosine(sentence, cluster centre), the same mathematics as the relevance
+filter but to crown instead of discard. On Beauvoir it produces textbook definitions with
+scores of 0.92 to 0.95. Its weakness (redundancy) is corrected by MMR (7.3).
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 36 : TextRank: PageRank over sentences (the hub among sentences)}
+\cabecera{36}{TextRank: PageRank over sentences (the hub among sentences)}
+
+\section{The idea: recycling Google's algorithm}
+
+PageRank ordered the web with a circular but solvable idea: \emph{a page matters if important
+pages link to it}. TextRank (Mihalcea \& Tarau, 2004) swaps pages for sentences and links for
+similarity: \emph{a sentence matters if important sentences resemble it}. It is EXACTLY your
+hub concept from Phase 4, applied inside each cluster.
+
+\begin{concepto}{the sentence graph and the random walk}
+Nodes $=$ the cluster's sentences; edge weight $=$ cosine between their SPECTER vectors.
+PageRank is computed by \textbf{power iteration}: imagine a reader hopping from sentence to
+sentence, preferring hops towards similar sentences; with probability $1-d$ ($d=0.85$) they
+teleport to any one at random. After iterating
+\[
+r \leftarrow \frac{1-d}{N} + d \, W r
+\]
+some 50 times, $r$ converges: the time the reader spends on each sentence IS its importance.
+In \texttt{froth/review.py} it is 4 lines of numpy, with no new libraries.
+\end{concepto}
+
+\section{Centroid vs TextRank: they do not measure the same thing}
+
+\begin{itemize}
+  \item \textbf{Centroid} rewards the \emph{typical}: the sentence most similar to the average.
+  \item \textbf{TextRank} rewards the \emph{endorsed}: the sentence with the most consensus
+        ``votes'', even if the consensus comes from a dense subgroup.
+\end{itemize}
+
+On your corpus (run \texttt{python -m froth.review} and judge for yourself):
+
+\begin{itemize}
+  \item USGS cluster: BOTH pick ``Minerals Yearbook, These annual publications review...''
+        When two independent metrics agree, that sentence IS the topic.
+  \item Lepidolite cluster: TextRank preferred \emph{``...the lepidolite flotation process and
+        its challenges are summarized, including poor selectivity...''} REVIEW sentences (they
+        summarise the field's challenges) get many votes because they touch everything. For a
+        literature review, that is a virtue.
+  \item Geology cluster: TextRank went off to exogenous deposits. A dense subgroup of
+        mineralogical sentences votes for itself and captures the ranking. The centroid,
+        anchored to the PAPERS' vectors, resists that trap better.
+\end{itemize}
+
+\begin{ojo}
+The scores are not comparable between methods: cosine lives in 0 to 1; PageRank splits a total
+probability of 1 among N sentences (which is why you see 0.008). Compare RANKINGS, not numbers.
+And neither of them avoids redundancy, that is MMR (7.3).
+\end{ojo}
+
+\begin{resumen}
+TextRank $=$ PageRank over the sentence similarity graph, solved by power iteration. It rewards
+consensus (good for summary sentences), but a dense subgroup can capture it; the centroid
+rewards the typical. The expert decides which reads better, or they get combined.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 37 : MMR: relevant but different (and an objective that came out degenerate)}
+\cabecera{37}{MMR: relevant but different (and an objective that came out degenerate)}
+
+\section{The problem that remained}
+
+The centroid (note 35) has a structural flaw: sentences resembling the centre resemble EACH
+OTHER. In your geology cluster, the 3 best sentences had a mutual similarity of \textbf{0.945},
+a summary saying the same thing three times.
+
+\begin{concepto}{Maximal Marginal Relevance (Carbonell \& Goldstein, 1998)}
+Greedy selection, one sentence at a time. Each candidate is scored as
+\[
+\lambda \cdot \mathrm{relevance} \;-\; (1-\lambda) \cdot \mathrm{redundancy}
+\]
+where redundancy $=$ its maximum similarity to what is ALREADY chosen. With $\lambda = 1$ you
+are back to the pure centroid; lowering $\lambda$ buys diversity by paying in relevance. The
+first one chosen is always the most relevant (nothing has been chosen yet to be redundant
+with).
+\end{concepto}
+
+\section{The stumble (which teaches more than the success)}
+
+First attempt at choosing $\lambda$ from the data: ``maximise relevance $-$ redundancy''.
+Result: it recommended $\lambda = 0.5$... the EDGE of the grid. That objective is
+\textbf{degenerate}: lowering $\lambda$ ALWAYS reduces redundancy faster than it loses
+relevance, so the ``optimum'' runs off downwards indefinitely. A recommender that always picks
+the extreme is measuring nothing.
+
+\section{The rule that does work}
+
+Looking at your real sweep (Beauvoir corpus, 12 clusters):
+
+\begin{center}
+\begin{tabular}{cccc}
+$\lambda$ & relevance & redundancy \\
+\hline
+0.5 & 0.868 & 0.758 \\
+0.6 & 0.906 & 0.829 \\
+\textbf{0.7} & \textbf{0.918} & \textbf{0.860} \\
+0.8 & 0.921 & 0.873 \\
+1.0 & 0.923 & 0.884 \\
+\end{tabular}
+\end{center}
+
+From 1.0 down to 0.7 relevance barely falls ($-0.5\%$) and the diversity comes for free; from
+0.7 downwards you start really paying. Rule adopted (interpretable): \textbf{the most diverse
+$\lambda$ that keeps $\geq 99\%$ of the achievable relevance}. Your corpus voted $\lambda = 0.7$
+on its own, and it coincides with the literature's default, but now we KNOW why it holds for
+this data (project rule 9).
+
+\begin{practica}
+\texttt{.venv\textbackslash Scripts\textbackslash python.exe -m froth.review}: at the end it
+prints the sweep and the before/after of the most redundant cluster. The centroid gives 3
+cloned pegmatite sentences; MMR keeps the definition and adds Nb-Ta granites and the
+Erzgebirge. Three angles, not an echo.
+\end{practica}
+
+\begin{ojo}
+MMR is greedy: it picks the best NOW without looking ahead, because the exact optimum is
+combinatorial (trying every combination of sentences). For 3 to 5 sentence summaries, the
+greedy approximation is the standard and it is more than enough.
+\end{ojo}
+
+\begin{resumen}
+MMR $=$ $\lambda \cdot$relevance $-$ $(1-\lambda) \cdot$redundancy, greedy selection. The first
+objective for choosing $\lambda$ came out degenerate (it stuck to the edge); the final rule,
+maximum diversity keeping 99\% of the relevance, chose 0.7 with your data. That completes the 3
+ranking pieces: typical (centroid), endorsed (TextRank) and diverse (MMR). Next comes
+assembling draft v2 (7.4).
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 38 : Draft v2: blending judges with Borda and citing by construction}
+\cabecera{38}{Draft v2: blending judges with Borda and citing by construction}
+
+\section{Assembling without inventing}
+
+\texttt{draft\_review\_v2()} puts the three pieces (notes 35 to 37) together into a per-cluster
+draft: one sentence OPENS (the panorama), 2 sentences BACK IT UP (typical but diverse), and
+each carries its $[n]$ citation pointing at the paper it came from verbatim. The numbering is
+global and in order of appearance; the same engine emits the \texttt{.bib} for LaTeX/Zotero.
+Nothing is generated: nothing can be hallucinated.
+
+\section{The opener problem and the Borda solution}
+
+The plan was ``TextRank opens'' (its panorama sentences are ideal). But in geology it opened
+with the exogenous deposits sentence, the dense-subgroup capture from note 36. The centroid
+scores (cosine 0 to 1) and TextRank's (a distributed probability) are NOT comparable, so they
+cannot be averaged... but the \emph{rankings} can.
+
+\begin{concepto}{Borda count (1770, elections; today, rank aggregation)}
+Each method orders the sentences and the position is the ``vote'': 1st $=$ 0 points, 2nd $=$ 1,
+and so on. The sentence with the LOWEST sum of positions wins. To hijack the opener you would
+have to fool BOTH judges at once: the dense subgroup loses because the centroid ranks its
+sentences low. With your data: geology went from exogenous deposits to the chemical composition
+of pegmatites; lepidolite kept its panoramic opening.
+\end{concepto}
+
+\section{Fidelity: reject, do not trim}
+
+The first draft opened lepidolite with \emph{``In addition, ...''}, a connector pointing at text
+that does not exist. Two possible fixes: TRIM the connector (which modifies the verbatim quote:
+forbidden by the project's fidelity rule) or REJECT the sentence and let Borda promote the next
+one. We reject: the \texttt{\_self\_contained()} filter now also vetoes two-word discourse
+connectors (``In addition'', ``On the other hand'', ``In contrast''...). The next one chosen was
+\emph{``Efficient flotation of lepidolite is crucial...''}, a better opening with zero
+manipulation of the original.
+
+\begin{ojo}
+The \dag{} in the draft marks sentences where the centroid and TextRank agree in the top 3
+(consensus $=$ a seal of confidence). If a section has no \dag, nothing is wrong, it only means
+the two judges saw different virtues.
+\end{ojo}
+
+\begin{practica}
+\texttt{.venv\textbackslash Scripts\textbackslash python.exe -m froth.review} generates
+\texttt{3\_Resultados/review\_draft\_v2.md} (42 traceable refs on Beauvoir) and its
+\texttt{.bib}. Open the .md and verify a citation: find the $[n]$, go to References, and check
+that the sentence exists in that paper's abstract. Auditable traceability.
+\end{practica}
+
+\begin{resumen}
+Draft v2 $=$ Borda picks the opener (fooling two judges is harder than one), MMR supplies the
+diverse backup, every sentence goes in verbatim with an $[n]$ citation $+$ BibTeX. Sentences
+with dangling connectors are REJECTED (never trimmed): fidelity rules.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 39 : The LLM as a verified polisher (never as an author)}
+\cabecera{39}{The LLM as a verified polisher (never as an author)}
+
+\section{The hierarchy of trust}
+
+Draft v2 is extractive: guaranteed truth, so-so prose. An LLM writes excellent prose... with no
+guarantee of truth. The architecture of phase 7.6 takes the best of both WITHOUT inheriting the
+risk:
+
+\begin{concepto}{polishing $\neq$ generating}
+The local LLM (Ollama) receives ONE narrow instruction: rewrite a section's paragraph so it
+flows, without adding or removing statements, keeping every $[n]$ citation exactly once. It
+does not research, it does not opine, it does not cite: it POLISHES sentences that already
+exist. The knowledge comes from the corpus; the LLM only contributes grammar.
+\end{concepto}
+
+\section{The verification gate (the heart of the design)}
+
+Trusting is not enough: every rewritten section goes through \texttt{\_verified()} in
+\texttt{froth/polish.py}:
+
+\begin{itemize}
+  \item \textbf{Citation census}: the $[n]$ citations in the polished text must be EXACTLY
+        those of the original (one fewer $=$ it deleted evidence; one more $=$ it invented).
+  \item \textbf{Length band} (0.5 to 1.7$\times$): outside that, it either over-summarised
+        (losing statements) or rambled (probably adding).
+  \item If ANY check fails $\rightarrow$ the section keeps its extractive original, silently.
+        The draft can only improve, never lie.
+\end{itemize}
+
+Tested without a server: the gate rejected a deleted citation, an invented citation and shrunk
+text; and with no Ollama running the draft stays intact (soft failure, like the source
+connectors).
+
+\section{Why LOCAL (Ollama) and not an API}
+
+A decision of yours from Phase 6 that pays off here: free (no quotas), private (your review
+never leaves your PC), offline, and a differentiator, since Elicit/SciSpace/Consensus depend on
+OpenAI. Your RTX 5060 runs an 8B model comfortably. Setup in
+\texttt{docs/OLLAMA\_SETUP.md} (one installer plus \texttt{ollama pull llama3.1:8b},
+$\sim$5 GB, once only).
+
+\begin{ojo}
+Temperature 0.2 (almost deterministic): for polishing you do not want creativity, you want
+obedience. And the polished version is a SEPARATE DOWNLOAD, the extractive one stays the
+visible default. The chain of trust: measured map $\rightarrow$ real sentences $\rightarrow$
+verified polished prose. Every link auditable.
+\end{ojo}
+
+\begin{resumen}
+The local LLM rewrites paragraphs that are already built and an automatic gate (citation census
+$+$ length band) discards any suspicious rewrite, section by section. LLM prose with the
+traceability of the extractive one, or nothing.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 40 : Cluster titles that mean something: KeyBERT (not trimmed sentences)}
+\cabecera{40}{Cluster titles that mean something: KeyBERT (not trimmed sentences)}
+
+\section{The problem (you spotted it)}
+
+Version 1 of the subtitles took the cluster's most central \emph{sentence} and cut it at 12
+words. Result: headings like ``Considering both\ldots'', ``In the present st\ldots'',
+fragments that hint at the topic but feel chopped off, like a half-read page. And the old
+keywords (c-TF-IDF: ``dpa, dda, lepidolite'') were no better: they classify well but they
+\emph{do not communicate}.
+
+\section{How the field solves it: KeyBERT}
+
+The standard (KeyBERT, and BERTopic's representation layer) does not trim sentences: it
+extracts short \textbf{keyphrases} and ranks them by MEANING.
+
+\begin{concepto}{KeyBERTInspired in 3 steps}
+\textbf{1. Candidates}: 2 to 3 word n-grams from the cluster's text (with the same hardened
+vectoriser from \texttt{cluster.py}: no digits, chemical elements spared). \\
+\textbf{2. Rank}: embed each candidate with SPECTER and measure its cosine to the cluster's
+\emph{centroid}. \\
+\textbf{3. Diversify}: MMR so the chosen phrases are not nearly identical.
+\end{concepto}
+
+The elegant part: these are the SAME pieces Froth already had (SPECTER $+$ cosine $+$ centroid
+$+$ MMR from Phase 7). That is why it was built by hand, with no new dependency, the project's
+pattern: build each piece in order to understand it.
+
+\section{Two stumbles that teach (your real data)}
+
+The first attempt produced titles with OCR noise (``limu'', ``nmic'', ``cgfs'') and generic ones
+(``ore flotation'' where it should have said ``lepidolite flotation''). Two fixes:
+
+\begin{itemize}
+  \item \textbf{\texttt{min\_df} $\geq$ 2}: require the phrase to appear in SEVERAL papers of
+        the cluster. OCR rubbish lives in a single abstract $\to$ out.
+  \item \textbf{Contrastive score} (the c-TF-IDF idea, but in embedding space):
+        \[
+        \mathrm{score} = \cos(\mathrm{phrase}, \mathrm{centroid}_c)
+                       - 0.4 \, \cos(\mathrm{phrase}, \mathrm{centroid}_{\mathrm{global}})
+        \]
+        It rewards what is close to THIS cluster and far from the whole corpus. That is how
+        ``lepidolite flotation'' (specific) beats ``ore flotation'' (generic, close to the
+        centre of everything).
+\end{itemize}
+
+\begin{ojo}
+The keyphrase closest to the centroid is NOT the best title: it tends to be the most generic.
+Specificity (far from the global average) is what makes a title \emph{say} something. Same
+lesson as the h-index and the relevance filter: the signal is in the contrast, not in the
+absolute value.
+\end{ojo}
+
+\begin{practica}
+The short title goes in the heading; the full centroid sentence is stored in the
+\texttt{summary} column and shows up on \textbf{hover}: short on top, detail on mouseover,
+exactly as you asked.
+\end{practica}
+
+\begin{resumen}
+Cluster titles $=$ 2 to 3 word keyphrases extracted KeyBERT-style (candidates $+$ SPECTER $+$
+cosine to the centroid $+$ MMR), with \texttt{min\_df} against the noise and a contrastive score
+(cluster $-$ global) to prefer the specific. Short, meaningful, with no trimmed sentences; the
+full sentence lives in the hover.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 41 : The re-fine-tune verdict: more data did NOT help}
+\cabecera{41}{The re-fine-tune verdict: more data did NOT help}
+
+\section{The hypothesis (your doubt from the learning log)}
+
+Fine-tune v1 (specter-mineral, 1,290 papers) won 14 of 22 on DBCV but punished the periphery
+(down to $-0.43$). Natural hypothesis: with \textbf{3$\times$ more data} (a re-harvest with
+keys $\to$ 4,045 papers) the v2 model should generalise better and stop penalising the distant
+topics. We put it to the test, measured.
+
+\section{The clean experiment}
+
+We trained v2 (4,045 title$\leftrightarrow$abstract pairs, MNRL, 249s on your RTX 5060) and
+compared \textbf{the three models over the SAME 22 new corpora} by DBCV: base (generic
+SPECTER), v1 (the old fine-tune) and v2 (the big fine-tune).
+
+\begin{center}
+\begin{tabular}{lccc}
+ & beats base & mean delta \\
+\hline
+v1 (1,290 papers) & \textbf{16/22} & \textbf{+0.093} \\
+v2 (4,045 papers) & 14/22 & +0.069 \\
+v2 vs v1 head to head & 10/22 & \textbf{$-$0.024} \\
+\end{tabular}
+\end{center}
+
+\begin{concepto}{the result: scaling the data did NOT help (and slightly hurt)}
+v2 beats base FEWER times than v1 (14 vs 16) and by a smaller margin. Head to head, v2 beats v1
+in only 10 of 22 with a negative mean delta. \textbf{The small, curated fine-tune was as good
+as or better than the big one.}
+\end{concepto}
+
+\section{Why (the real lesson)}
+
+The 3$\times$ re-harvest brought more papers, but also more DIVERSE and NOISIER ones
+(multi-domain term collisions like ``attrition''/``autogenous'', more subdomains).
+Self-supervised fine-tuning drags the model towards the \emph{centre of mass} of the training
+corpus (note 31); enlarging the corpus with noise moves that centre towards the generic and the
+specialisation gets DILUTED.
+
+\begin{ojo}
+In self-supervised fine-tuning, the QUALITY and coherence of the corpus matters more than the
+quantity. ``More data'' is a reflex, not a law. The variance is still enormous: v2 ranges from
+$+0.47$ (XCT slags) to $-0.51$ (iron silicate fines). The fine-tune is a per-topic bet, not a
+uniform improvement.
+\end{ojo}
+
+\section{What stays in production}
+
+Nothing changes: production continues with \textbf{base} SPECTER (the most stable across
+topics). The fine-tunes are the RESEARCH RESULT. v1 is kept
+(\texttt{models/specter-mineral-v1}); v2 remains as a reference. Full evidence in
+\texttt{2\_Datos/model\_comparison\_3way.csv}.
+
+\begin{resumen}
+Re-fine-tune with 3$\times$ the data: v2 beats base 14 of 22 (v1 was winning 16 of 22), and
+loses to v1 head to head (mean delta $-0.024$). More data did NOT help, the big noisy corpus
+diluted the specialisation. An honest thesis lesson: in self-supervised fine-tuning, corpus
+curation $>$ size. ``No improvement'' is also a result.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 42 : When the program does not crash but HANGS: watchdogs and subprocesses}
+\cabecera{42}{When the program does not crash but HANGS: watchdogs and subprocesses}
+
+\section{The real accident (the early hours of 14 July)}
+
+We launched the uncapped re-harvest of the 22 topics. The batch ran perfectly: 18 giant corpora
+(4,000 to 16,681 papers each) in about 3 hours\ldots{} and then, silence. The next morning:
+\textbf{9 hours frozen} on topic \#20, no error, no message, no progress. The process was still
+``alive'' (77 MB of RAM, zero CPU), waiting for a network response that never came.
+
+\section{The central lesson: a hang is NOT a crash}
+
+Our \texttt{run\_topic} was already ``failure proof'': it wrapped the whole pipeline in
+\texttt{try/except}, and every failure became a \texttt{FAILED} row in the report so the next
+topic could carry on. It sounded armoured. It was not.
+
+\begin{concepto}{crash vs.\ hang}
+A \textbf{crash} raises an exception: \texttt{try/except} catches it and life goes on.
+A \textbf{hang} raises NOTHING: the program simply waits forever (a dead socket, a runaway
+computation, a blocked driver). No \texttt{try/except} in the world interrupts an infinite
+wait. For that you need someone WATCHING FROM OUTSIDE with a clock: a \textbf{watchdog}.
+\end{concepto}
+
+And since the topics ran in series, one single hang froze the entire batch. The probability was
+not negligible: 22 topics $\times$ 4 APIs $\times$ thousands of requests.
+
+\section{The fix: child process $+$ wall clock}
+
+Each topic now runs in its own \textbf{subprocess}
+(\texttt{python -m froth.batch --one "<title>"}) watched by the parent with
+\texttt{subprocess.run(..., timeout=TOPIC\_TIMEOUT\_S)} (2,400\,s, generous: the slowest
+legitimate topic took 38 min). If the child goes past the clock, Windows KILLS it, the parent
+writes \texttt{FAILED: timed out} and moves on to the next. The hang went from ``a silent
+9-hour catastrophe'' to ``an ugly row in the CSV''.
+
+Along the way we also bounded the two computations that really could run away: the DBCV sweep
+for automatic granularity is $\mathcal{O}(n^2)$ and repeats 18 times, which over 16,000 points
+is hours. Now, past a cap (\texttt{DBCV\_SUBSAMPLE\_CAP} $=$ 5,000) the sweep runs on a random
+subsample (the CHOICE of granularity is stable; the cost is not), and the final clustering does
+use every point. And the abstract backfill, the only network loop with no budget, got its time
+limit.
+
+\section{Bonus 1: the Beauvoir plan B}
+
+The topic ``Recovery of by-products of lithium from the a rare-metal granite'' harvested \textbf{0
+papers}: its derived terms revolved around ``a rare-metal granite'', too niche for the APIs. Fix: if
+the harvest comes back EMPTY, it retries ONCE with a broad high-recall query (the first content
+words of the title: \texttt{recovery by-products lithium}). Real result: from 178 old papers to
+\textbf{4,937}.
+
+\section{Bonus 2: the external enemy (WDAC in waves)}
+
+The corporate application control policy (WDAC) intermittently blocks the native DLLs of
+scipy/hdbscan/torch (``An Application Control policy has blocked this file''). Measured live: it
+let one child work for 19 minutes and 5 minutes later blocked the other two at import. You do
+not fight a corporate policy: you WAIT with automated patience. A cheap probe
+(\texttt{python -c "import hdbscan, umap, torch"}) every 5 minutes, and when the wave passes,
+the heavy work launches. The parent orchestrator, moreover, imports only \texttt{config} $+$
+\texttt{pandas}: with no scientific DLLs, WDAC cannot take it down.
+
+\begin{ojo}
+Three different layers of defence, because they are three different failures:
+\texttt{try/except} catches \emph{crashes}, the watchdog with a timeout kills \emph{hangs}, and
+the window probe waits out \emph{environment blocks}. Confusing them is like believing a life
+jacket protects you from lightning.
+\end{ojo}
+
+\begin{resumen}
+The batch froze for 9 hours because a hang raises no exception and nothing was watching. A
+three-layer fix: one subprocess per topic with a wall-clock timeout (watchdog), bounded
+computation (DBCV by subsample), and WDAC window probing. Result: 22 of 22 topics with a clear
+status and $\sim$169,000 papers harvested; Beauvoir went from 178 to 4,937 with the plan B
+terms, a synthetic-ore topic from 237 to 9,723. A robust system is not one that never fails: it is one that
+turns any failure into a row in the report and carries on.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 43 : The relevance gate: separating wheat from chaff in 190,000 papers}
+\cabecera{43}{The relevance gate: separating wheat from chaff in 190,000 papers}
+
+\section{Glossary in plain words (read this first)}
+
+\begin{itemize}
+  \item \textbf{Vector}: a paper's numerical ``fingerprint'', a list of 768 numbers capturing
+        its meaning. Papers about the same thing have similar fingerprints (note 05).
+  \item \textbf{Cosine}: the gauge of likeness between two fingerprints. It runs from $-1$ to
+        $1$: near $1$ $=$ they talk about the same thing; near $0$ $=$ nothing in common.
+  \item \textbf{Centroid}: the ``average'' of a group of vectors, its centre of gravity, like
+        the mean grade of a batch of ore.
+  \item \textbf{Threshold}: the cut-off value. Above it: the paper enters the map. Below: out.
+  \item \textbf{Bimodal}: a distribution with TWO humps. If the good ones make one and the bad
+        ones another, the valley between them is the natural cut.
+  \item \textbf{Hub / cluster}: a group of papers very similar to each other, a subtopic.
+\end{itemize}
+
+\section{The problem YOU found}
+
+With the uncapped harvest (190,000 papers), you opened the tailings map and saw \emph{``even
+human resources stuff, in colour''}. Your hypothesis was exact: no word failed to vectorise,
+what failed was \textbf{the gate} deciding what enters the map.
+
+The old gate: relevance $= \cos(\mbox{paper},\ \mbox{topic TITLE})$, with a fixed threshold of
+0.55. Measured on tailings: it accepted \textbf{93\%} of 16,681 papers, including chlamydiosis
+in koalas (because of biological ``iron''), ``event management'' (because of ``management'')
+and ``Circular Economy in SMEs'' (because of ``circular economy''). A short phrase with generic
+magnets cannot tell facets apart. On top of that, the old ceiling of 25 results per term was an
+ACCIDENTAL precision filter: removing it (the right decision, coverage is the mission) let in
+the deep tail of every term.
+
+\section{Toy mini-example (do the arithmetic with me)}
+
+Fingerprints of only 2 numbers (instead of 768). The title points at $T=(1,\ 0)$. Three papers:
+
+\begin{center}
+\begin{tabular}{lcc}
+ & vector & $\cos$ with the title \\
+\hline
+A: tailings flotation   & $(0.98,\ 0.20)$ & $0.98$ \\
+B: personnel management & $(0.60,\ 0.80)$ & $0.60$ \\
+C: koalas               & $(0.50,\ 0.87)$ & $0.50$ \\
+\end{tabular}
+\end{center}
+
+With a threshold of 0.55, B enters the map! ($0.60 > 0.55$). That is your human resources hub.
+
+The \textbf{contrastive gate} asks a better question: do you resemble my topic MORE than you
+resemble the generic?
+\[
+v_2 = \cos(\mbox{paper},\ \mbox{core}) - 0.4 \cdot \cos(\mbox{paper},\ \mbox{global})
+\]
+where core $\approx A$ (the papers stuck closest to the title) and global $=$ the average of
+all of them $\approx (0.74,\ 0.67)$ normalised. The arithmetic:
+\[
+v_2(A) = 1.00 - 0.4 \cdot 0.86 = \mathbf{0.66}
+\qquad
+v_2(B) = 0.75 - 0.4 \cdot 0.98 = \mathbf{0.36}
+\]
+B ends up far from any reasonable cut. With 768 numbers and 16,681 papers, this same thing
+produced a \textbf{bimodal} distribution with a valley at $+0.399$, and the threshold is chosen
+in THAT valley, per corpus (a computed knob, not a fossil constant).
+
+\begin{concepto}{the contrastive idea}
+It is the same trick that fixed the KeyBERT titles (note 40): reward closeness to the core AND
+punish closeness to the generic mass. Shared genericness stops counting as merit.
+\end{concepto}
+
+\section{Stumble 1: the per-paper gate flattened the maps}
+
+The first version judged paper by paper\ldots{} and tailings went from 115 subtopics to
+\textbf{2} (at ANY granularity, the DBCV sweep confirmed it). Why? Keeping only ``those similar
+to the core'' leaves a surviving population that is a homogeneous band: a ball with no internal
+valleys, which HDBSCAN cannot subdivide. We gained precision and destroyed the STRUCTURE, which
+is half the product.
+
+The fix came out of your own sentence (``an HR hub, \emph{in colour}''): the rubbish arrives in
+\textbf{coherent hubs}, so the gate must judge HUBS: (1) map EVERYTHING, (2) score each cluster
+by the mean $v_2$ of its members, (3) throw out whole clusters below the valley of those means,
+(4) loose noise is judged individually. Measured: the particle physics, astronomy, HR and koala
+hubs died whole; the tailings mortar one did not lose a single paper; 325 domain subtopics
+intact.
+
+\section{Stumble 2: your double blind uncovered a bias}
+
+You judged 40 borderline cases blind: 62\% agreement, but with a direction. You rescued 11
+papers the machine was throwing out, almost all about \textbf{circular economy}\ldots{} which is
+IN your thesis title. Cause: the global centre points partly towards the topic itself (the
+corpus is full of it), so a paper aligned with the title got a reward from the core AND a
+punishment from the global: a double penalty for its own identity. Fix: \textbf{project out} of
+the global the direction of the core before punishing. Verified: ``Towards Circular Economy
+Metrics'' came back; the koalas and the cheese paper (``Iron Ages''\ldots{} the Iron Age, not the
+mineral) stay out.
+
+Closing honesty: re-measured, your agreement against the final gate came out at 60\%,
+practically the same. The fix won the cases you cared about (the circular economy ones), but the
+$\pm0.04$ frontier around the valley is ambiguous EVEN for the expert (you let the cheese
+through because of the ``Iron''). We tune no further: that would be overfitting to 40 cases.
+
+\begin{ojo}
+The gate's value is at the HUB level (coherent rubbish dies whole, domain structure intact), not
+in decorating the edge. No one-dimensional frontier is perfect; the right flow is machine
+proposes $\to$ expert validates $\to$ the knob is recalibrated where the expert is
+systematically right (circular economy yes, cheese no).
+\end{ojo}
+
+\begin{resumen}
+Old gate: $\cos$ with the title $+$ a fixed threshold $=$ 93\% accepted, koalas in colour.
+New gate: a contrastive score (core vs.\ global WITHOUT the topic's direction) $\to$ bimodal
+$\to$ a valley PER corpus $\to$ judgement by HUBS to preserve structure. Result: 22 of 22
+topics clean with their own threshold, a master set of 77,636 unique relevant papers. Three
+lessons: (1) contrasting against the generic separates what plain likeness cannot; (2) filtering
+individuals can destroy the collective structure, judge the group when the signal is a group
+signal; (3) the human judge finds the biases the metric cannot see, and has their own too.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 44 : Citation triplets: training the way SPECTER does, and the inverted verdict}
+\cabecera{44}{Citation triplets: training the way SPECTER does, and the inverted verdict}
+
+\section{Glossary in plain words}
+
+\begin{itemize}
+  \item \textbf{Fine-tuning}: taking an already-trained model (SPECTER) and giving it a
+        ``specialisation course'' with data from YOUR domain.
+  \item \textbf{Triplet}: a training example with 3 pieces: the \emph{anchor} (a paper), the
+        \emph{positive} (one that should end up CLOSE) and the \emph{negative} (one that should
+        end up FAR).
+  \item \textbf{Hard negative}: a DIFFICULT negative. It resembles the anchor but is not what
+        you are after. It teaches far more than an obvious negative.
+  \item \textbf{Epoch}: one complete pass over all the training examples.
+  \item \textbf{DBCV}: a quality mark for density-based clustering ($-1$ to $1$): it rewards
+        groups that are dense inside and well separated from each other.
+  \item \textbf{Double blind}: evaluating without knowing which option is which, so the
+        judgement is not contaminated.
+\end{itemize}
+
+\section{The question you asked}
+
+\emph{``Should we be able to improve the fine-tune, or is SPECTER perfect?''} The short answer:
+SPECTER is not perfect, but our previous fine-tunes used a weak method. v1 and v2 trained with
+pairs (title $\leftrightarrow$ abstract): that only teaches ``titles go with their abstracts'',
+and it drags everything to the corpus's centre of mass, which is why v2 (3$\times$ the data)
+did NOT beat v1 (note 41). The original SPECTER is trained differently: with \textbf{citation
+triplets}. If paper A cites B, B should end up close to A; a paper A does not cite should end
+up far.
+
+\section{Toy mini-example}
+
+Anchor: ``Flotation of micas with cationic collectors''. Positive: the collector paper THAT IT
+CITES. Hard negative: a paper cited by the positive but NOT by the anchor (two hops away: a
+relative of a relative, but not yours). At each step, the training MEASURES the distances and
+pushes: the positive a little closer, the negative a little further. Repeat 100,000 times and
+the whole space reorganises itself according to who-cites-whom.
+
+The uncapped harvest made this possible at scale: from 833 triplets (the old corpus) to
+\textbf{150,885} (100,190 with a hard negative), 181$\times$ more signal, because with 190,000
+papers many references fall INSIDE the corpus.
+
+\section{The training run (and its measured knobs)}
+
+First attempt: 2 epochs $\times$ 512-token sequences $=$ an estimated 17 hours on your RTX 5060
+(3.2 s/step, measured). Your decision: 1 epoch $+$ 256 tokens (abstracts at $\sim$200 tokens fit
+almost whole) $+$ checkpoints every 1,000 steps (the lesson of note 42: an interruption should
+cost minutes, not everything). Result: 3.4 steps per second, finished in $\sim$45 minutes. The
+model: \texttt{specter-mineral-v3}.
+
+\section{The verdict in two rounds}
+
+\textbf{Round 1, the metric (DBCV, 22 clean corpora, fixed sample of 1,500):}
+
+\begin{center}
+\begin{tabular}{lcc}
+ & beats base & mean delta \\
+\hline
+v1 (pairs, small)   & 14/22 & $+0.013$ \\
+v2 (pairs, large)   & 9/22  & $-0.022$ \\
+v3 (citation)       & 12/22 & $\mathbf{+0.023}$ \\
+v3 vs v2 head to head & 13/22 & $+0.046$ \\
+\end{tabular}
+\end{center}
+
+Your question is answered: the right METHOD wins where QUANTITY failed (v2 loses against base;
+v3 is the only one with a clear mean improvement). And an extra finding: on the old dirty
+corpora v1 was winning 16 of 22 with $+0.093$; after cleaning, ALL the advantages shrank. Part
+of the earlier ``improvement'' was knowing how to group the rubbish.
+
+\textbf{Round 2, the expert (you, double blind, 4 anonymous maps):} you ranked
+B$>$D$>$C$>$A\ldots{} which on revealing the key turned out to be \textbf{v1 $>$ v2 $>$ base $>$
+v3}. Almost the MIRROR image of the metric's ranking! DBCV's favourite (v3, 0.377) was your last
+place.
+
+\begin{concepto}{geometry $\neq$ narrative}
+DBCV measures whether the groups are dense and separated (geometry). You measure whether the map
+TELLS the story of the field (narrative). v3 learned from citations, so it groups
+\emph{citation communities}, who cites whom: schools, methods, journals, which form beautiful
+blobs for the metric but do not always coincide with readable TOPICS. v1, with its gentle
+adjustment, preserves the semantic organisation an expert reads.
+\end{concepto}
+
+\section{The decisions (yours, as the judge)}
+
+\begin{itemize}
+  \item \textbf{Production $\to$ v1}: you chose it blind TWICE (2026-07-12 and 2026-07-16) and
+        it beats base 14 of 22. Your installation uses local v1; the public version falls back
+        automatically to stock SPECTER (no friction, no manual downloads).
+  \item \textbf{v3 is not discarded, it is repurposed}: its ``citational'' space is exactly the
+        signal the future seed mode needs (``papers similar to THIS one'', ResearchRabbit
+        style): there, citation communities ARE what you are looking for.
+\end{itemize}
+
+\begin{ojo}
+If we had only looked at the metric, we would have put into production the model the expert
+reads WORST. If we had only looked at the expert, we would not know WHY v3 groups oddly (nor
+that it is gold for another task). Machine proposes, expert validates, and the two views
+together are worth more than either alone.
+\end{ojo}
+
+\begin{resumen}
+SPECTER's real recipe (citation triplets $+$ hard negatives) applied to YOUR 190,000 papers:
+150,885 triplets, 45 min of GPU, v3. The metric crowns it ($+0.023$ over base, the only clear
+positive; method $>$ quantity confirmed); your double blind puts it last and crowns v1, a mirror
+ranking. Double lesson: (1) the training method matters more than the volume of data; (2)
+geometric quality is not narrative quality, choose the model according to the TASK (v1 for
+readable maps, v3 as a candidate for citation similarity). ``No improvement for this'' is also a
+result, and so is finding its right task.
+\end{resumen}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 45 : Semantic zoom: why 10,921 papers fit on screen and 1,772 do not}
+\cabecera{45}{Semantic zoom: why 10,921 papers fit on screen and 1,772 do not}
+
+\section{Glossary in plain words}
+
+\begin{itemize}
+  \item \textbf{Render}: to draw on the screen. Every dot, every line, every letter you see had
+        to be painted by someone.
+  \item \textbf{DOM}: the list of objects the browser keeps for each thing drawn on a page. If
+        you draw 10,000 circles as objects, the browser keeps 10,000 records and revisits them
+        continuously.
+  \item \textbf{SVG}: a way of drawing where EACH shape is a DOM object. Convenient (you can
+        click each one) but expensive: thousands of objects drown the browser.
+  \item \textbf{WebGL}: a way of drawing that hands the points to the \textbf{graphics card}
+        (the GPU). The GPU paints millions of points at once because that is what it is built
+        for. It does not keep a record per point.
+  \item \textbf{GPU}: the chip that draws. Your laptop has an RTX 5060. It does one thing very
+        well: the same operation over thousands of pieces of data \emph{in parallel}.
+  \item \textbf{Main thread}: the single lane through which the browser attends to EVERYTHING:
+        your clicks, the mouse wheel, the computations, the drawing. If something occupies it,
+        the page stops responding even though it is not ``broken''.
+  \item \textbf{Frame}: one image of the screen. For something to feel fluid you need about 60
+        per second, that is $\approx$16 ms for each one.
+  \item \textbf{Graph physics}: a simulation where nodes repel each other and edges pull like
+        springs, until the drawing ``settles'' by itself.
+  \item \textbf{Percentile}: if you sort 201 numbers from smallest to largest, the 90th
+        percentile is the value leaving 90\% of them below. It lets you say ``the big ones''
+        without inventing a number.
+  \item \textbf{Centroid}: the middle point of a group. Where we put its name.
+\end{itemize}
+
+\section{The problem, as it turned up}
+
+We raised the paper ceiling of the \emph{Network} view from 400 to 2,500 and 1,772 nodes ended
+up on screen. I wrote ``nothing breaks''. Your screenshot said otherwise: a frozen hairball,
+with no zoom and no panning.
+
+And yet, in that same session, the \emph{Atlas} view drew \textbf{10,921 papers} and stayed
+responsive. Almost six times as many points, and fluid. That contrast is this whole note.
+
+\begin{concepto}{drawing is not simulating}
+The Network uses \textbf{physics}: on every frame it recomputes the forces between nodes and,
+when you move the mouse, it checks node by node which one is under the cursor. With 1,772 nodes
+that fills the 16 ms of the frame and no time is left to attend to the wheel. The zoom was not
+broken: \textbf{the lane was occupied}.
+
+The Atlas simulates nothing. The positions were computed beforehand (UMAP, note 08) and saved.
+It just sends them to the GPU and the GPU paints them. That is why 10,921 cost it less than
+1,772 with physics.
+\end{concepto}
+
+\begin{ojo}
+\textbf{My mistake, spelled out.} When I said ``nothing breaks'' I had measured two things: how long Python takes to
+\emph{generate} the HTML, and how long vis.js takes to \emph{settle} the drawing. Both cheap.
+\textbf{I did not measure the interaction}, which is exactly what broke.
+
+The lesson, which applies to the whole project: \textbf{something being fast to PRODUCE says
+nothing about whether it is fluid to USE}. They are two different measurements and you have to
+take both.
+\end{ojo}
+
+\section{The other half: 201 names do not fit}
+
+With the drawing engine fixed, the human problem appears. The Atlas painted the dots with one
+colour per subtopic and nothing else: pretty, and mute. To know what each blob was you had to
+go to the side legend and cross-reference colours by eye.
+
+The obvious solution (put each subtopic's name over its centroid) does not work: the LIBS/FTIR
+corpus has \textbf{201 subtopics}. Two hundred and one labels at once are a wall of text, not a
+map.
+
+\subsection{Toy mini-example (before the theory)}
+
+Imagine a map of only 5 territories, with these sizes in papers:
+
+\begin{center}
+\begin{tabular}{lccccc}
+\hline
+Territory & A & B & C & D & E \\
+Papers    & 100 & 60 & 30 & 12 & 8 \\
+\hline
+\end{tabular}
+\end{center}
+
+Now think of Google Maps. From very far away you see ``Spain''. You zoom in and ``Madrid''
+appears. Closer, ``Chamberi''. Closer still, the street name. \textbf{What is shown changes with
+distance}, not just the size of the letters. That is semantic zoom.
+
+Applied to our 5 territories: from far away only A; you close in and A and B appear; closer, A,
+B, C; right on top, all five. The interesting question is \textbf{where you put the cuts}, and
+that is where inventing a number will not do.
+
+\begin{concepto}{semantic zoom (Shneiderman, 1996)}
+The classic visualisation rule says: \emph{``overview first, then zoom and filter, and details
+only on demand''}. Translated to Froth: first a few big territories with names, and the small
+subtopics only when you get close to their area. Never all 201 at once.
+\end{concepto}
+
+\section{The cuts come from YOUR data (the usual rule)}
+
+An invented threshold (``show the ones with more than 50 papers'') would work in one corpus and
+be absurd in another. So the cuts are computed from the \textbf{percentiles of the subtopic
+sizes of that particular corpus}: the 90th percentile (the genuinely big ones), 75th, 50th, and
+0 (all of them).
+
+Two of your real corpora, with the numbers that came out:
+
+\begin{center}
+\begin{tabular}{lrrl}
+\hline
+Corpus & Papers & Subtopics & Computed cuts (p90/p75/p50/p0) \\
+\hline
+Beauvoir (your thesis) & 3,867  & 96  & 54 / 35 / 19 / 7 \\
+LIBS $+$ FTIR          & 10,921 & 201 & 76 / 37 / 20 / 7 \\
+Circular economy       & 4,946  & 69  & 142 / 69 / 33 / 7 \\
+\hline
+\end{tabular}
+\end{center}
+
+Look at the third row: circular economy has FEWER papers than LIBS but its ``satellite'' cut is
+nearly double (142 against 76), because its subtopics are fatter and fewer. A fixed number would
+have left that map either empty or saturated. The corpus decides.
+
+What you see as you close in, measured in the browser over the 10,921 papers:
+
+\begin{center}
+\begin{tabular}{llrr}
+\hline
+Level & Metaphor & Cut & Names on screen \\
+\hline
+1 & Satellite & $\geq$ 76 & 21 \\
+2 & Regional  & $\geq$ 37 & 52 \\
+3 & Local     & $\geq$ 20 & 106 \\
+4 & Street    & $\geq$ 7  & 201 \\
+\hline
+\end{tabular}
+\end{center}
+
+And there is still a second safety net: even when level 4 sends all 201 labels, deck.gl applies
+a \textbf{collision filter} that discards the ones that would overlap, letting the bigger
+territory win. The 201 can only appear together if they genuinely fit.
+
+\begin{practica}
+Open the Atlas of a large corpus and do this in order:
+\begin{enumerate}
+  \item Without touching anything, count the names you see. There should be few, all of them
+        fat territories.
+  \item Zoom in two or three steps over one area. You will see new names appear, and only in
+        the area you are looking at.
+  \item Click a subtopic in the side legend: the camera flies to it.
+  \item Press \textbf{``Whole map''} to return to the general view.
+\end{enumerate}
+If in step 1 you see a wall of text, the percentile computation is not being applied: tell me
+and we will look into it.
+\end{practica}
+
+\section{The stumble that teaches more than the success}
+
+The original plan for ``click on a subtopic'' was different and more ambitious: recompute a
+UMAP \textbf{with only that subtopic's papers}, to reveal its internal structure, which the
+global UMAP flattens. The plan said ``about 2 seconds, and it can be cached''.
+
+Before building it, I measured: \textbf{29.2 seconds} for 500 papers, with the real function
+(\texttt{cluster.reduce\_to\_2d}). Not 2 seconds. Almost thirty.
+
+With 96 subtopics in your thesis corpus, exploring the map would have meant waiting half a
+minute per click. Unacceptable. So the click does something far humbler: it \textbf{flies the
+camera to the coordinates that already exist}. Zero computation, zero waiting.
+
+\begin{ojo}
+\textbf{The figure in the plan was mine, and it was false.} That ``$\sim$2s'' came from no measurement: I wrote it from intuition and it sat in the plan as
+if it were data. If I had not measured it before programming, we would have built a useless
+function and you would have discovered it by using it.
+
+Rule: \textbf{a figure in a plan is not data until someone measures it}. And the measurements
+are taken BEFORE building, not after.
+\end{ojo}
+
+Something real is lost, and it is worth saying: the internal sub-structure of each subtopic
+still cannot be seen. It is noted as a possible future improvement (compute it once, when the
+corpus is processed, not on click).
+
+\section{The division of labour that came out of this}
+
+Instead of trying to make one view do everything, each one does what it is good at:
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+ & \textbf{Network} & \textbf{Atlas} \\
+\hline
+Engine        & vis.js with physics    & deck.gl / WebGL (GPU) \\
+Paper ceiling & 400                    & the whole corpus \\
+What it shows & who resembles whom     & the complete territory \\
+What it is for & reading the most cited core & getting oriented and choosing where to look \\
+\hline
+\end{tabular}
+\end{center}
+
+Lowering the Network from 2,500 to 400 \textbf{is not a regression}: it is recognising that
+physics is useful for seeing relations between a few nodes, and gets in the way of seeing a
+continent. If 400 feels too few, the number is in the configuration and can be raised without
+touching code; but only your machine can judge the fluidity, not mine.
+
+\begin{resumen}
+Drawing on the GPU (WebGL) scales; simulating physics per frame does not. And when there are
+more names than room, they are shown by zoom levels, with the cuts computed from the percentiles
+of YOUR corpus, not from an invented number.
+\end{resumen}
+
+\section{Further reading}
+
+\begin{itemize}
+  \item Shneiderman, B. (1996), \emph{The Eyes Have It}: the origin of ``overview first, zoom
+        and filter, then details-on-demand''.
+  \item \texttt{nightingaledvs.com/how-to-visualize-a-graph-with-a-million-nodes}
+  \item \texttt{cambridge-intelligence.com/visualizing-graphs-webgl}
+  \item The code: \texttt{froth/atlas.py} (functions \texttt{minCountForZoom},
+        \texttt{makeLabels} and \texttt{flyTo}).
+\end{itemize}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{part}{Note 46 : Why a program is slow to open: import late, and never compute twice}
+\cabecera{46}{Why a program is slow to open: import late, and never compute twice}
+
+\section{Glossary in plain words}
+
+\begin{itemize}
+  \item \textbf{Import}: when your program says \codigo{import umap}, Python goes to
+        disk, finds that library, reads all of it and holds it in memory. That takes
+        time. And it happens \emph{even if you never use it}.
+  \item \textbf{Library}: code other people wrote that you reuse. UMAP, HDBSCAN and
+        PyTorch are libraries.
+  \item \textbf{Module level}: the lines flush against the left margin of a \codigo{.py}
+        file. They run the moment anyone imports that file, without anyone calling
+        anything.
+  \item \textbf{Lazy import}: moving the \codigo{import} INSIDE the function that needs
+        it, so the cost is paid the first time you use that function, not when the
+        program opens.
+  \item \textbf{Cache}: keeping an already computed result so you do not repeat the work.
+  \item \textbf{In-memory cache}: kept while the program is alive. Close the program and
+        it is \textbf{gone}.
+  \item \textbf{On-disk cache}: kept in a file. It survives closing the program, shutting
+        the machine down, and coming back tomorrow.
+  \item \textbf{Cache key}: the label you file the result under. If the label changes,
+        the stored result no longer applies and the work is redone.
+\end{itemize}
+
+\section{The problem, as it arrived}
+
+Batman wrote: \emph{``the wait is far too long''}. Short sentence, no diagnosis. The rule
+in this project is not to guess: measure.
+
+Every piece of Froth's startup was timed separately. This came out:
+
+\begin{center}
+\begin{tabular}{lr}
+\hline
+\textbf{Startup step} & \textbf{Seconds} \\
+\hline
+importing \codigo{umap} + \codigo{hdbscan}          & 24.8 \\
+importing \codigo{torch} + \codigo{sentence\_transformers} & 19.7 \\
+importing \codigo{streamlit}                        & 2.1 \\
+loading the SPECTER model                           & 2.5 \\
+DBCV sweep (choosing the granularity)               & 2.3 \\
+reading the data off disk                           & 0.2 \\
+\hline
+\textbf{TOTAL} & \textbf{52.2} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{concepto}{What the table teaches}
+44.5 of the 52.2 seconds are \emph{importing libraries}. And Froth's home screen (the
+title, the topic dropdown, the box for pasting a new title) \textbf{uses none of them}.
+You were waiting 45 seconds for code that was never going to run.
+\end{concepto}
+
+\section{First fix: import late}
+
+Before, at the very top of \codigo{froth/cluster.py}:
+
+\begin{verbatim}
+import umap
+import hdbscan
+\end{verbatim}
+
+After, inside the function that actually uses it:
+
+\begin{verbatim}
+def reduce_to_2d(vectors):
+    import umap          # paid here, not when the app opens
+    reducer = umap.UMAP(n_components=2, metric="cosine", random_state=42)
+    return reducer.fit_transform(vectors)
+\end{verbatim}
+
+\begin{ojo}
+\textbf{The cost does not vanish: it moves.} UMAP still takes its 30 seconds. What
+changes is \emph{when}. Before, you paid it staring at a blank screen with no way to tell
+whether the program was alive. Now you pay it while harvesting a new topic, with a
+progress bar in front of you saying what it is doing. The same wait feels completely
+different depending on whether you know what you are waiting for.
+\end{ojo}
+
+\section{But the big one was still hiding}
+
+With the imports fixed, cold startup dropped to 8.8 seconds. And yet, opening the real
+app, it \textbf{still took over three and a half minutes}.
+
+The lesson sits right here: \textbf{a stopwatch only measures what you point it at}. I
+had timed the imports, not the whole app. Looking at what the app printed while it worked
+turned up the real culprit:
+
+\begin{verbatim}
+Naming the subtopics (reading abstracts)...
+\end{verbatim}
+
+Naming the 44 subtopics. For each one you read its abstracts, pull out candidate phrases,
+turn them into vectors with SPECTER and keep the one that best represents the group (that
+is note 40). That is expensive. And it was redone \textbf{in full, every single time you
+opened the application}.
+
+\begin{concepto}{Why it repeated if it was already ``cached''}
+The code already used \codigo{@st.cache\_data}, which stores the result \textbf{in RAM}.
+That works beautifully while the app is open: switch tabs and nothing is recomputed. But
+closing the app frees that memory. Tomorrow you pay the three minutes again.
+
+An in-memory cache protects you from repeating within a session. It does not protect you
+from repeating \emph{between} sessions. For that you need disk.
+\end{concepto}
+
+\section{Second fix: save to disk, under the right key}
+
+The names now go into a \codigo{.json} file. The interesting part is not the saving, it
+is \textbf{what label they are saved under}.
+
+\begin{verbatim}
+key = f"{version}|{mcs}|{years[0]}-{years[1]}"
+digest = hashlib.sha1(key.encode()).hexdigest()[:12]
+# -> 2_Datos/processed/subtitles_36e4d383cfce.json
+\end{verbatim}
+
+The label mixes the three things the names depend on:
+
+\begin{itemize}
+  \item \textbf{the data version}: harvest more papers and the subtopics change;
+  \item \textbf{the granularity}: moving the slider builds different subtopics;
+  \item \textbf{the year range}: filtering by year drops papers, and the groups shift.
+\end{itemize}
+
+Change any of the three and the label changes, the stored file is not found, and the work
+is redone. Change none and it is read from disk instantly.
+
+\begin{ojo}
+\textbf{This is the classic caching bug, and it is frightening because it fails quietly.}
+If your key is too narrow (say, only the corpus name), the program shows you yesterday's
+names on today's data. Nothing breaks, nothing warns you: it simply lies. A cache with a
+bad key is worse than no cache at all.
+\end{ojo}
+
+\begin{concepto}{This does NOT contradict rule 9}
+It might look as though storing the result is the opposite of ``recompute for every
+corpus''. It is not. It is still computed for \emph{this} corpus, from \emph{its} data.
+The only thing removed is computing \textbf{the same question twice}. A fixed default
+would mean never measuring; this is measuring once and remembering.
+\end{concepto}
+
+\section{The result}
+
+\begin{center}
+\begin{tabular}{lrr}
+\hline
+ & \textbf{Before} & \textbf{After} \\
+\hline
+Opening the app until it is usable & $>$3.5 min & $\approx$30 s \\
+Importing libraries alone          & 52.2 s     & 8.8 s \\
+Does SPECTER load at startup?      & yes        & no \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{practica}
+Check it yourself, and learn to measure while you are at it:
+
+\begin{enumerate}
+  \item Open Froth from the desktop shortcut and count until the home screen appears.
+  \item Now move the granularity slider to a number you have never used (say 7). Notice:
+        \emph{there} it does wait, because that combination is not stored yet.
+  \item Move it back to 18, then to 7 again. The second time is instant: it is on disk.
+  \item Look inside \codigo{2\_Datos\textbackslash processed\textbackslash}. There is one
+        \codigo{subtitles\_...json} per combination you tried. Open one in a text editor:
+        those are your subtopic names.
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+If a program is slow to open, measure before you touch anything: it is almost always
+doing work that is not needed yet (import it late) or work it already did yesterday
+(store it on disk, under a key that includes EVERYTHING that can change the answer).
+\end{resumen}
+\clearpage
+\end{document}

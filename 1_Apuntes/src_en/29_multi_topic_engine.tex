@@ -1,0 +1,82 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{29}{Phase 6: generalising is not training (and the multi-topic engine)}
+
+\section{The clarification that opens the phase}
+
+The plan: ``iterate over each of the cohort's 22 titles and keep training''. Right in spirit,
+but those are \textbf{two different acts}:
+
+\begin{concepto}{generalising (6.1 to 6.3) vs.\ training (6.5)}
+\begin{itemize}
+  \item \textbf{Iterating the 22 titles trains NOTHING}: the model (SPECTER) does not change a
+        single weight. What gets hardened is the \textbf{code}: every odd title that breaks
+        something forces a fix. It is the 1$\rightarrow$2$\rightarrow$22 ladder from the
+        original plan.
+  \item \textbf{Really training} (6.5) does change the model's weights: fine-tuning SPECTER
+        with the thousands of abstracts accumulated from the 22 corpora. PyTorch, loss, epochs,
+        on the RTX 5060 GPU (confirmed capable).
+\end{itemize}
+The two acts feed each other: generalising produces the training dataset.
+\end{concepto}
+
+\section{The multi-topic engine (6.1)}
+
+Until yesterday the topic lived \emph{nailed} into \codigo{config.py}. Now:
+
+\begin{concepto}{config.set\_topic(title)}
+One call re-points the WHOLE engine: it derives new search terms and moves the data paths into
+a folder of their own (\codigo{2\_Datos/topics/<slug>/}). It works because each module reads
+\codigo{config.*} \emph{at execution time}, not at import time, a design detail that paid
+dividends. (A classic trap caught: \codigo{def f(x=config.TOPIC)} freezes the value at import;
+it was corrected to \codigo{x=None} plus resolving inside.)
+\end{concepto}
+
+\begin{concepto}{derive\_search\_terms(): from title to searches}
+Topic 1's terms were written by hand. For ANY title, the heuristic in \codigo{froth/terms.py}:
+it strips filler words (``innovative approaches for the...''), keeps \textbf{real phrases from
+the title} (consecutive bigrams and trigrams: \emph{froth flotation}, \emph{scheelite ores},
+\emph{Quantitative XRD}), respects \textbf{acronyms} (XRD, LIBS, NiMH) and extracts the
+\textbf{content of brackets} (that is where the elements and deposits live). Deterministic, no
+dependencies. The local LLM layer (Ollama) will come on top as an optional refiner, a decision
+already taken: local, private, free.
+\end{concepto}
+
+\section{The 1\texorpdfstring{$\rightarrow$}{->}2 milestone (tested)}
+
+The full pipeline on \emph{``scheelite ores by froth flotation''} \textbf{without touching
+code}: 47 papers, its own folder, and clusters that make metallurgical sense (Falcon
+concentrator, SNF reagents, frothers). And the test paid off immediately:
+
+\begin{ojo}
+\textbf{What the 2nd topic taught} (this is why the ladder exists):
+\begin{enumerate}
+  \item The keyword ``nbsp'' gave away that Crossref abstracts carry \textbf{HTML entities}
+        ($\&$nbsp;). The cleaner now does \codigo{html.unescape}.
+  \item The \codigo{.gitignore} did not cover the new per-topic folders. The data nearly ended
+        up on GitHub.
+  \item On small corpora (47 papers) a fixed granularity of 8 leaves too much noise
+        $\rightarrow$ the pipeline now accepts \codigo{min\_cluster\_size="auto"} (chosen by
+        DBCV, Note 27, per corpus).
+\end{enumerate}
+Three real fixes from ONE new title. The 22 in the batch will find more, and that is exactly
+their job.
+\end{ojo}
+
+\section{The parade (6.2)}
+
+\codigo{froth/batch.py} reads the 22 cohort titles from the CSV and runs the pipeline for each
+one, with a robustness report per topic (papers, relevant, clusters, noise, granularity chosen,
+seconds, status). Defensive design: the report is saved after \textbf{every} topic and later
+runs \textbf{resume} where they left off (a rate limit loses nothing). Failures do not stop the
+parade: they stay as FAILED in the table, and that table is the fix-it agenda for 6.3.
+
+\begin{resumen}
+Iterating titles hardens the code (generalising); changing weights is training (6.5). The
+engine is already multi-topic (set\_topic $+$ derived terms $+$ per-topic folders), tested with
+scheelite ores, which threw in 3 fixes along the way. The batch of 22 runs with resume and a
+per-topic report: its failure table is the work plan for 6.3.
+\end{resumen}
+
+\end{document}

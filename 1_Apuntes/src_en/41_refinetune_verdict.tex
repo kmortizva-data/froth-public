@@ -1,0 +1,64 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{41}{The re-fine-tune verdict: more data did NOT help}
+
+\section{The hypothesis (your doubt from the learning log)}
+
+Fine-tune v1 (specter-mineral, 1,290 papers) won 14 of 22 on DBCV but punished the periphery
+(down to $-0.43$). Natural hypothesis: with \textbf{3$\times$ more data} (a re-harvest with
+keys $\to$ 4,045 papers) the v2 model should generalise better and stop penalising the distant
+topics. We put it to the test, measured.
+
+\section{The clean experiment}
+
+We trained v2 (4,045 title$\leftrightarrow$abstract pairs, MNRL, 249s on your RTX 5060) and
+compared \textbf{the three models over the SAME 22 new corpora} by DBCV: base (generic
+SPECTER), v1 (the old fine-tune) and v2 (the big fine-tune).
+
+\begin{center}
+\begin{tabular}{lccc}
+ & beats base & mean delta \\
+\hline
+v1 (1,290 papers) & \textbf{16/22} & \textbf{+0.093} \\
+v2 (4,045 papers) & 14/22 & +0.069 \\
+v2 vs v1 head to head & 10/22 & \textbf{$-$0.024} \\
+\end{tabular}
+\end{center}
+
+\begin{concepto}{the result: scaling the data did NOT help (and slightly hurt)}
+v2 beats base FEWER times than v1 (14 vs 16) and by a smaller margin. Head to head, v2 beats v1
+in only 10 of 22 with a negative mean delta. \textbf{The small, curated fine-tune was as good
+as or better than the big one.}
+\end{concepto}
+
+\section{Why (the real lesson)}
+
+The 3$\times$ re-harvest brought more papers, but also more DIVERSE and NOISIER ones
+(multi-domain term collisions like ``attrition''/``autogenous'', more subdomains).
+Self-supervised fine-tuning drags the model towards the \emph{centre of mass} of the training
+corpus (note 31); enlarging the corpus with noise moves that centre towards the generic and the
+specialisation gets DILUTED.
+
+\begin{ojo}
+In self-supervised fine-tuning, the QUALITY and coherence of the corpus matters more than the
+quantity. ``More data'' is a reflex, not a law. The variance is still enormous: v2 ranges from
+$+0.47$ (XCT slags) to $-0.51$ (iron silicate fines). The fine-tune is a per-topic bet, not a
+uniform improvement.
+\end{ojo}
+
+\section{What stays in production}
+
+Nothing changes: production continues with \textbf{base} SPECTER (the most stable across
+topics). The fine-tunes are the RESEARCH RESULT. v1 is kept
+(\texttt{models/specter-mineral-v1}); v2 remains as a reference. Full evidence in
+\texttt{2\_Datos/model\_comparison\_3way.csv}.
+
+\begin{resumen}
+Re-fine-tune with 3$\times$ the data: v2 beats base 14 of 22 (v1 was winning 16 of 22), and
+loses to v1 head to head (mean delta $-0.024$). More data did NOT help, the big noisy corpus
+diluted the specialisation. An honest thesis lesson: in self-supervised fine-tuning, corpus
+curation $>$ size. ``No improvement'' is also a result.
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,43 @@
+# Librerías del proyecto Froth. Se instalan con: pip install -r requirements.txt
+# (Las iremos instalando por fase, no todas de golpe.)
+
+# Fase 1 — datos
+requests
+pandas
+pyarrow            # para guardar en formato parquet (rápido y ligero)
+truststore         # usa los certificados de Windows (arregla el error SSL en HTTPS)
+
+# Fase 2 — embeddings
+numpy
+sentence-transformers   # modelos preentrenados (SPECTER) para vectorizar papers
+scikit-learn            # utilidades de ML (similitud, PCA, métricas)
+
+# Fase 3 — clustering / topic modeling
+umap-learn         # reducción de dimensiones (768 -> 2)
+hdbscan            # clustering por densidad
+bertopic           # une embeddings + UMAP + HDBSCAN + etiquetado
+
+# Fase 4 — grafos
+networkx
+
+# Fase 5 — módulo Tarea (extraer texto de PDFs de instrucciones)
+pypdf
+
+# Exploración interactiva
+notebook           # Jupyter: cuadernos .ipynb para explorar y validar
+nbconvert          # ejecutar/convertir notebooks desde la terminal
+
+# App de escritorio (ventana propia, sin navegador — formato B)
+pywebview          # ventana nativa (Edge WebView2) que envuelve la app local
+
+# Visualización
+plotly
+streamlit          # la mini-web interactiva (buscador + mapa)
+matplotlib         # previews estáticos (PNGs en 3_Resultados)
+pyvis              # red interactiva con física (Fase 4)
+circlify           # layout de circle packing sin solapes (Fase 4)
+
+# Fase 6 — deep learning
+torch              # PyTorch (build CUDA cu128 para GPU: pip install torch --index-url https://download.pytorch.org/whl/cu128)
+datasets           # kit de entrenamiento HF (lo exige sentence-transformers.fit)
+accelerate         # orquestador de GPU del Trainer de HF

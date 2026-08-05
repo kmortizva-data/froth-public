@@ -1,0 +1,82 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{09}{The semantic search engine (putting it all together)}
+
+\section{What we built}
+
+A tool that takes a \textbf{phrase in natural language} and returns the papers closest
+\emph{in meaning}, not by shared words. It is the \codigo{most\_similar()} function in
+\codigo{froth/embed.py}, and it brings together everything learned in Phase 2.
+
+\begin{concepto}{semantic search vs.\ keyword search}
+Classic search (Ctrl+F, basic Google) matches \textbf{words}: if you search ``grain size'' it
+does not find a text saying ``coarse and fine particles'', even though they mean the same
+thing. \textbf{Semantic} search matches \textbf{meaning}: it turns your phrase into a vector
+and looks for nearby vectors, so it does relate them.
+\end{concepto}
+
+\section{How it works inside (3 steps)}
+
+\begin{enumerate}
+  \item \textbf{Vectorise the phrase.} Your phrase goes through the \emph{same} model
+        (SPECTER) with \codigo{model.encode([query])}. Key point: the phrase and the papers
+        must live on the same map, or comparing them would make no sense.
+  \item \textbf{Measure against everything.} With \codigo{cosine\_similarity} we compute the
+        cosine of your phrase against all 126 vectors at once.
+  \item \textbf{Keep the best.} We sort from highest to lowest cosine and return the first
+        \codigo{k} (5 by default), as a \codigo{score, title, year} table.
+\end{enumerate}
+
+\begin{ojo}
+The same model for both things. If you vectorised the papers with SPECTER and the phrase with
+a different model, the two ``maps'' would not line up and the results would be rubbish.
+Embedding consistency $=$ golden rule.
+\end{ojo}
+
+\section{The test (real results)}
+
+Search: \emph{``how does grain size affect the recovery of minerals by froth flotation''}
+\begin{center}
+\begin{tabular}{ll}
+\textbf{Score} & \textbf{Paper} \\
+\hline
+0.873 & Role of Bubble Size in Flotation of Coarse and Fine Particles \\
+0.856 & Effect of Clay Slime on the Froth Stability and Flotation Performance \\
+0.855 & Spodumene Flotation Mechanism \\
+\end{tabular}
+\end{center}
+We typed ``grain size'' and it found papers about ``coarse and fine particles'' and
+``ultrafine'': \textbf{it understood the meaning, not the words}.
+
+Search: \emph{``extracting beryllium and tantalum as valuable by-products''}
+\begin{center}
+\begin{tabular}{ll}
+\textbf{Score} & \textbf{Paper} \\
+\hline
+0.812 & Niobium and tantalum \\
+0.740 & Concentration of Tantalum and Niobium \\
+\end{tabular}
+\end{center}
+It brought back exactly the Ta/Nb/Be by-product papers from your thesis.
+
+\begin{concepto}{a score between 0 and 1}
+The \codigo{score} is the cosine similarity (Note 08). Here it hovers around 0.7 to 0.9:
+high, and it makes sense. Careful: ``free phrase vs.\ paper'' scores tend to be somewhat
+lower than ``paper vs.\ paper'' (0.94 earlier), because a short phrase is less rich than a
+whole abstract. What matters is the \emph{ordering}, not the absolute number.
+\end{concepto}
+
+\section{What this means for the project}
+
+You now have a genuinely useful tool: interrogating your corpus in natural language. And more
+importantly: the machinery (vectorise $+$ cosine $+$ sort) is \textbf{the same} one that will
+form the subtopic bubbles in Phase 3. Mastering this is mastering the core of Froth.
+
+\begin{resumen}
+The semantic search engine turns your phrase into a vector, compares it by cosine against the
+126 papers and returns the closest in meaning. Tested: ``grain size'' found ``fine/coarse
+particles''. Froth's engine is already beating.
+\end{resumen}
+
+\end{document}

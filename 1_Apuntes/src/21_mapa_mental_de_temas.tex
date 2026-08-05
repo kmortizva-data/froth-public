@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{21}{El mapa mental de temas (y el hallazgo de los silos)}
+
+\section{Subir un nivel: de papers a temas}
+
+La red del Apunte 20 tiene 120 nodos — buena para explorar, mala para \emph{presentar}.
+El \textbf{mapa mental de temas} agrega la información un nivel arriba: cada
+\textbf{subtema entero se vuelve UN nodo} (tamaño $=$ nº de papers) y las aristas resumen
+la relación entre subtemas. Es la vista ejecutiva: 3--4 burbujas que cuentan todo el campo.
+
+\begin{concepto}{agregación: la misma red, menos resolución}
+Este truco —agrupar nodos y resumir sus relaciones— se llama \emph{agregación} y es
+universal: de personas $\rightarrow$ departamentos, de calles $\rightarrow$ ciudades, de
+papers $\rightarrow$ subtemas. Se pierde detalle, se gana legibilidad. Por eso mantenemos
+\emph{ambas} redes: la de papers (explorar) y la de temas (entender/presentar).
+\end{concepto}
+
+\section{Las aristas llevan DOS números (y ahí está la gracia)}
+
+Entre cada par de subtemas medimos dos cosas distintas:
+\begin{enumerate}
+  \item \textbf{Similitud} $=$ promedio del coseno entre los papers de uno y otro (en 768D).
+        ``¿Qué tan relacionado es lo que \emph{estudian}?''
+  \item \textbf{Citas cruzadas} $=$ cuántas veces un paper de un subtema \emph{cita} a uno
+        del otro. ``¿Qué tanto se \emph{leen} entre ellos?''
+\end{enumerate}
+
+\section{El hallazgo: silos (tu gap, cuantificado)}
+
+Con tus datos salió esto:
+
+\begin{center}
+\begin{tabular}{lcc}
+\textbf{Relación} & \textbf{Similitud} & \textbf{Citas cruzadas} \\
+\hline
+Geología $\leftrightarrow$ Flotación & 0.688 & \textbf{1} \\
+Geología $\leftrightarrow$ Economía/reciclaje & 0.662 & 3 \\
+Flotación $\leftrightarrow$ Economía/reciclaje & 0.683 & 1 \\
+\end{tabular}
+\end{center}
+
+\begin{ojo}
+Lee la primera fila con ojos de tesista: geología y flotación \textbf{estudian cosas muy
+relacionadas} (0.69 es alto) pero \textbf{casi no se citan} — ¡1 cita entre 90 papers! De
+las 116 citas internas del corpus, solo 5 cruzan fronteras de subtema: las comunidades son
+\textbf{silos} — conectadas por significado, separadas por costumbre.
+
+Tu tesis (``flotación de micas de Li \emph{y su impacto en} la recuperación de by-products
+del granito'') vive exactamente en ese silencio entre silos. Esto es un \emph{gap}
+cuantificado y citable en tu introducción: la Fase 5 formalizará esta detección.
+\end{ojo}
+
+\section{Dónde vive en el código}
+
+\codigo{froth/graph.py} $\rightarrow$ \codigo{build\_topic\_graph()}: nodos con
+label/nº papers/citas/centroide, aristas con similitud y citas cruzadas. Se imprime al
+correr \codigo{python -m froth.graph}; la vista previa está en
+\codigo{3\_Resultados/topic\_mindmap.png}.
+
+\begin{resumen}
+Agregar la red de papers a nivel de temas da la vista ejecutiva (3--4 burbujas). Cada arista
+lleva similitud (qué estudian) y citas (qué se leen) — y en tu corpus divergen: subtemas muy
+afines que no se citan $=$ silos $=$ tu gap, ya con números.
+\end{resumen}
+
+\end{document}

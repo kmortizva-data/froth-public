@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{31}{El veredicto del fine-tuning: especialización, no magia}
+
+\section{El experimento (6.6)}
+
+Dos modelos compitieron sobre los 22 corpus del cohorte con el MISMO examen (mismos datos,
+misma semilla de UMAP, granularidad elegida por DBCV): el SPECTER genérico contra
+\textbf{specter-mineral}, tu modelo afinado en 83 segundos de GPU con $\sim$1250 pares
+título$\leftrightarrow$abstract.
+
+\section{Los números (la historia está en la varianza)}
+
+\begin{itemize}
+  \item \textbf{specter-mineral ganó 14/22 topics} en validez DBCV.
+  \item Pero el delta \emph{medio} fue $+0.007$ con $\sigma = 0.170$ — un promedio plano
+        escondiendo un patrón fuerte:
+  \item \textbf{Ganó grande en el núcleo del dominio}: reciclaje hidrometalúrgico ($+0.30$),
+        escorias XCT ($+0.24$), core imaging de Beauvoir ($+0.20$), tu tesis ($+0.05$).
+  \item \textbf{Perdió en la periferia}: morteros geopolímeros ($-0.43$), simulación de
+        refinería ($-0.27$), IA en cintas ($-0.21$).
+\end{itemize}
+
+\begin{concepto}{la lección: el fine-tune pequeño especializa hacia el centro de masa}
+Con pocos datos, afinar no ``mejora el modelo en general'': lo \textbf{arrastra hacia donde
+está la masa del corpus de entrenamiento} (flotación/geología). Los topics cercanos a esa
+masa ganan resolución; los lejanos la pierden. Hipótesis abierta (tu próximo experimento
+natural): ¿el corpus 2$\times$ con Scopus reduce la penalización periférica?
+\end{concepto}
+
+\section{El doble ciego (tu momento)}
+
+Dos listados de clusters del corpus de Beauvoir, etiquetados A/B al azar, clave oculta.
+Elegiste \textbf{B} ``porque separaba la flotación de finos de la química de colectores de
+lepidolita'' --- y B era \textbf{tu modelo}. Métrica y experto coincidieron en el dominio
+que dominas: la validación más fuerte disponible.
+
+\begin{ojo}
+Un ``no mejora en promedio'' con estructura clara (gana aquí, pierde allá, y sabemos por
+qué) es MEJOR resultado científico que un ``+2\% en todo'' inexplicado. No infles: matiza.
+\end{ojo}
+
+\begin{resumen}
+14/22 victorias, delta medio $\approx 0$, $\sigma$ grande: el fine-tuning pequeño
+especializa hacia el núcleo del corpus a costa de la periferia — confirmado por métrica
+(DBCV) y por test doble ciego donde elegiste tu propio modelo sin saberlo.
+\end{resumen}
+
+\end{document}

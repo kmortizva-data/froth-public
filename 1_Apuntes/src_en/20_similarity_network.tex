@@ -1,0 +1,83 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{20}{The similarity network: K neighbours, threshold, and your real hubs and bridges}
+
+\section{How the network was built}
+
+Each paper is connected to its \textbf{K most similar papers} (cosine similarity computed in
+the \textbf{original 768D space}, not on the 2D map, which we already know distorts), and only
+connections with a similarity $\geq$ a \textbf{threshold} survive. This is the so-called
+\emph{kNN graph} (k nearest neighbours).
+
+\begin{concepto}{the K and threshold knobs: nobody ``knows'' them, you test them}
+You asked: who says 5 neighbours is ideal? Honest answer: \textbf{nobody}. It is a knob, like
+granularity. The serious way to choose it is to try values and look at the resulting
+structure:
+
+\begin{center}
+\begin{tabular}{rrrrr}
+\textbf{K} & \textbf{lines} & \textbf{conn./paper} & \textbf{pieces} & \textbf{\% across clusters} \\
+\hline
+3 & 281 & 4.7 & 1 & 17\% \\
+\textbf{5} & \textbf{457} & \textbf{7.6} & \textbf{1} & \textbf{21\%} \\
+8 & 702 & 11.7 & 1 & 24\% \\
+15 & 1213 & 20.2 & 1 & 30\% \\
+\end{tabular}
+\end{center}
+
+A high K reveals more crossings between topics (your first neighbours are family; the distant
+ones cross borders) but with 20 connections per paper the drawing is unreadable (a
+``hairball''). Chosen: \textbf{K=5, threshold 0.75}: readable, with visible bridges and the
+network in a single piece. Both live in \codigo{config.py} (\codigo{GRAPH\_KNN},
+\codigo{GRAPH\_SIM\_THRESHOLD}): changing your mind costs one line.
+\end{concepto}
+
+\section{Measuring hubs and bridges (no longer by eye)}
+
+\begin{concepto}{degree and betweenness}
+\begin{itemize}
+  \item \textbf{Hub} $=$ a node with many connections $\rightarrow$ measured by
+        \textbf{degree} (count its edges).
+  \item \textbf{Bridge} $=$ a node the paths between communities run through $\rightarrow$
+        measured by \textbf{betweenness centrality}: how many times a node lies on the
+        shortest path between two others. A paper with \emph{few} connections can be a great
+        bridge if those few join worlds.
+\end{itemize}
+\end{concepto}
+
+\section{The results with YOUR papers}
+
+\textbf{Hubs} (the corpus's compulsory reading):
+\begin{enumerate}
+  \item \emph{The Magmatic-Hydrothermal Transition in Lithium Pegmatites} (24 connections)
+  \item \emph{Electrostatically Controlled Enrichment of Lepidolite via Flotation} (15)
+  \item \emph{Mineral Chemistry of Two-Mica Granite Rare Metals} (15)
+\end{enumerate}
+
+\textbf{Bridges} (where novelty lives), with two big findings:
+\begin{enumerate}
+  \item Among the top 5 bridges is \emph{``Characterization and Liberation Study of the
+        \textbf{Beauvoir Granite}''}: the founding paper of YOUR deposit is a bridge between
+        communities. The network confirms \textbf{with numbers} that your thesis's territory
+        (geology $\leftrightarrow$ processing at Beauvoir) is frontier ground: a measurable
+        originality argument for your introduction.
+  \item 3 of the top 5 bridges had been labelled \textbf{noise} by HDBSCAN. The lesson of Note
+        14 (``noise $\neq$ rubbish; they are generalists between clouds'') held up
+        quantitatively: \emph{yesterday's noise is today's bridges}.
+\end{enumerate}
+
+\section{Where it lives in the code}
+
+\codigo{froth/graph.py}: \codigo{build\_similarity\_graph()} (the network, with per-node
+attributes), \codigo{find\_hubs()} (degree), \codigo{find\_bridges()} (betweenness),
+\codigo{save\_graph()/load\_graph()} (GraphML format in \codigo{2\_Datos/processed/}).
+Run it with \codigo{python -m froth.graph}.
+
+\begin{resumen}
+kNN network: each paper with its K=5 most similar (cosine in 768D), threshold 0.75, knobs
+chosen by testing and stored in config. Degree finds hubs; betweenness finds bridges. Your
+corpus confirmed it: the Beauvoir paper is a bridge, and the ``noise'' was hiding the bridges.
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,49 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{26}{El modo Tarea por dentro: trocear y promediar (mean pooling)}
+
+\section{El problema que no se ve}
+
+El modo Tarea acepta PDFs de instrucciones enteros. Pero SPECTER (como casi todos los
+modelos de embeddings) solo ``lee'' unos \textbf{512 tokens} ($\approx$ 350--400 palabras):
+todo lo que pase de ahí lo \textbf{trunca en silencio}. Si le dieras un PDF de 10 páginas,
+el vector representaría... la primera página. El resto, ignorado sin aviso. Este tipo de
+límite silencioso es una trampa clásica de los modelos de lenguaje.
+
+\section{La solución: trocear y promediar}
+
+\begin{concepto}{chunking + mean pooling}
+\codigo{embed.embed\_texts\_mean()} hace dos pasos:
+\begin{enumerate}
+  \item \textbf{Trocear (chunking)}: parte cada texto en pedazos de $\sim$180 palabras
+        (cómodamente bajo el límite).
+  \item \textbf{Promediar (mean pooling)}: vectoriza cada pedazo y calcula el
+        \textbf{promedio} de todos los vectores $\rightarrow$ un solo vector que representa
+        el documento COMPLETO.
+\end{enumerate}
+La intuición geométrica: cada pedazo es un punto en el mapa del significado; el promedio es
+el \emph{centro de gravedad} de todos — la posición media de lo que el documento trata.
+\end{concepto}
+
+\begin{ojo}
+El promedio también \emph{diluye}: si el PDF mezcla temas muy distintos, el centro de
+gravedad cae ``entre'' ellos y puede no representar bien a ninguno. Para instrucciones de
+tareas (temáticamente coherentes) funciona muy bien; para documentos-miscelánea habría que
+agrupar pedazos por tema primero. Limitación conocida y aceptada.
+\end{ojo}
+
+\section{La prueba real}
+
+Consigna simulada: \emph{``informe técnico comparando colectores para flotación de lepidolita
+y su selectividad frente a ganga de feldespato y cuarzo''} (repetida hasta forzar varios
+pedazos). Resultado: top-5 puros papers de colectores, encabezados por el del colector LCJ
+(similitud 0.897). El centro de gravedad cayó exactamente donde debía.
+
+\begin{resumen}
+Los modelos de embeddings truncan a $\sim$512 tokens en silencio; el modo Tarea lo esquiva
+troceando el texto y promediando los vectores (mean pooling $=$ centro de gravedad del
+significado). Probado: una consigna de colectores devuelve papers de colectores.
+\end{resumen}
+
+\end{document}

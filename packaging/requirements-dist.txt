@@ -1,0 +1,19 @@
+# Froth DISTRIBUTION dependencies (portable build) — runtime only, no dev/training tools.
+# torch is installed separately with the CPU index (the public build must not assume a GPU;
+# training is not a public-app feature).
+requests
+truststore
+pandas
+pyarrow
+numpy
+sentence-transformers
+scikit-learn
+umap-learn
+hdbscan
+networkx
+plotly
+streamlit
+pyvis
+circlify
+pypdf
+pywebview

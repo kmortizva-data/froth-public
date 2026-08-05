@@ -1,0 +1,55 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{34}{Extractive vs abstractive summarising: why ours cannot hallucinate}
+
+\section{The Phase 7 problem}
+
+Review v1 is an honest but dry scaffolding: keywords $+$ lists of papers. For it to actually
+\emph{say} something there are two routes, and the difference between them is THE most
+important design decision of this phase.
+
+\begin{concepto}{extractive vs abstractive}
+\textbf{Abstractive}: a model GENERATES new text that ``sounds like'' a summary (ChatGPT,
+Elicit). Fluent, but the text exists in no source: it can invent statements and, worse,
+references. \\
+\textbf{Extractive}: the system SELECTS real sentences that already exist in the abstracts.
+Less fluent, but every sentence has a source paper: the citation is traceable \emph{by
+construction}. Hallucinating is impossible: not a single word is generated.
+\end{concepto}
+
+\section{Why we chose extractive first}
+
+\begin{itemize}
+  \item \textbf{Trust}: an academic review with ONE invented reference is dead. Plain ChatGPT
+        is famous for citing papers that do not exist.
+  \item \textbf{Traceability for free}: since the sentence comes from an abstract in the
+        corpus, the ``know more'' button and the [n] citation already work with no extra
+        verification.
+  \item \textbf{It is real ML}: ranking sentences uses embeddings, cosine, graphs and PageRank,
+        everything you already built, at a new scale (sentences, not papers).
+  \item Polishing with an LLM (paraphrasing sentences ALREADY chosen, verifying citations)
+        stays as an OPTIONAL layer on top, never as the base (7.6).
+\end{itemize}
+
+\section{The kitchen: from abstract to usable sentences}
+
+In \texttt{froth/review.py}, \texttt{split\_sentences()} cuts each abstract where there is
+final punctuation followed by a capital letter, and \texttt{\_self\_contained()} discards
+whatever does not survive on its own: fragments ($<$8 words), marathons ($>$60) and sentences
+starting with \textbf{anaphora}, ``This method...'', ``It also...'', because they point at a
+text the review's reader will never see.
+
+\begin{ojo}
+The extractive approach inherits the limitations of its raw material: we work with ABSTRACTS
+(not full text), and a badly written abstract yields mediocre sentences. Review v2 is still an
+improved scaffolding, not final prose. Honesty above all.
+\end{ojo}
+
+\begin{resumen}
+Extractive $=$ selecting real sentences (traceable, no hallucination); abstractive $=$
+generating text (fluent, risky). Froth builds on extractive and leaves the local LLM as an
+optional polisher of already-chosen sentences.
+\end{resumen}
+
+\end{document}

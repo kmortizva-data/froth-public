@@ -1,0 +1,78 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{17}{The relevance filter: the system cleans itself}
+
+\section{The problem YOU spotted}
+
+While validating the map (step 3.7) you saw a cluster labelled \emph{``women, men, commodity,
+masculinities''}. Diagnosis: the papers that infiltrated in Phase 1 (poetry,
+telecommunications, history, from acronym collisions in the searches) dominated the keywords
+of a cluster that also contained legitimate lithium economy papers. The root cause was in the
+\emph{pull}, not in the map.
+
+\section{The elegant fix: measure every paper against the TOPIC}
+
+\begin{concepto}{relevance score}
+We already have all the pieces: each paper has its vector, and the \textbf{title of your
+thesis} can have one too. So: \emph{a paper's relevance} $=$ cosine similarity between its
+vector and the TOPIC's vector. A poetry paper lands far from the title of a flotation thesis
+$\rightarrow$ low score $\rightarrow$ out. The system uses \textbf{its own embeddings to clean
+itself}: no manual rules, no blacklists.
+\end{concepto}
+
+\begin{concepto}{the threshold is dictated by the data, not by intuition}
+Where to cut? We looked at the real distribution of the 126 scores:
+\begin{center}
+\begin{tabular}{ll}
+Infiltrators (poetry, telecom, history...) & 0.495 to 0.543 \\
+\textbf{(natural gap)} & \\
+Everything legitimate (including Li economy) & 0.587 to 0.90 \\
+\end{tabular}
+\end{center}
+There is a \textbf{gap} between 0.543 and 0.587: the threshold
+\codigo{RELEVANCE\_THRESHOLD = 0.55} falls in the middle and separates them perfectly. That is
+how thresholds are chosen seriously: by looking at where the data is already separated, not by
+inventing a nice-looking number.
+\end{concepto}
+
+\section{Where it lives in the code}
+
+\begin{itemize}
+  \item \codigo{embed.py} $\rightarrow$ \codigo{relevance\_to\_topic()}: computes the scores and
+        saves them as a \codigo{relevance} column in \codigo{papers.parquet}.
+  \item \codigo{config.py} $\rightarrow$ \codigo{RELEVANCE\_THRESHOLD = 0.55} (with the
+        reasoning in a comment).
+  \item \codigo{cluster.py} $\rightarrow$ filters BEFORE UMAP: the rubbish does not even take
+        part in the arrangement, so the whole map improves.
+\end{itemize}
+
+\section{What changed on the map (a real data science iteration)}
+
+\begin{itemize}
+  \item The embarrassing labels disappeared; the economy cluster is now honest
+        (\emph{usgs, old scrap} $=$ recycling/commodities).
+  \item A \textbf{4th cluster} emerged that had been buried: literature \textbf{in French}
+        about Nb-Ta-Sn recovery, probably the French school studying Beauvoir. A valuable
+        finding, and a new lesson: \emph{language also groups} (SPECTER puts the French papers
+        together). Future refinement: translate abstracts, or accept that cluster as a valid
+        subtopic?
+  \item The noise went up (9 $\rightarrow$ 21): as the map rearranged, more papers ended up
+        between clouds. That is what your granularity slider is for.
+\end{itemize}
+
+\begin{ojo}
+This is what the real data science cycle looks like: \textbf{build $\rightarrow$ look
+$\rightarrow$ spot something odd $\rightarrow$ diagnose $\rightarrow$ fix $\rightarrow$
+discover something new}. Your expert eye spotted the problem; the embeddings provided the
+solution; and the fix uncovered a finding (the French cluster) that nobody was looking for.
+Every iteration teaches.
+\end{ojo}
+
+\begin{resumen}
+Relevance $=$ cosine(paper, TOPIC); threshold 0.55 chosen from the natural gap in the data;
+filtered before UMAP. Result: a clean map, honest labels and a surprise French cluster about
+Beauvoir. The system cleans itself with its own tools.
+\end{resumen}
+
+\end{document}

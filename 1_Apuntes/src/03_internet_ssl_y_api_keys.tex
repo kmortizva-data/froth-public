@@ -1,0 +1,84 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{03}{Cuando internet dice que no: SSL, códigos de error y API keys}
+
+Hoy chocamos con dos errores distintos seguidos. Vale oro saber distinguirlos, porque uno
+era \emph{de tu máquina} y el otro \emph{del servidor} — y se arreglan de formas opuestas.
+
+\section{Error 1: el candado (SSL / certificados)}
+
+\begin{concepto}{certificados y HTTPS}
+Cuando tu PC se conecta a \codigo{https://api.openalex.org}, antes de mandar nada verifica
+el \textbf{certificado} del servidor: su carnet de identidad digital, firmado por
+autoridades de confianza. Así sabes que hablas con OpenAlex de verdad y no con un impostor.
+
+Python trae su propia lista de autoridades de confianza. En tu red (corporativa/con
+antivirus que inspecciona el tráfico), el certificado que llega no estaba en esa lista
+$\rightarrow$ Python se negó: \codigo{CERTIFICATE\_VERIFY\_FAILED}. Tu navegador sí
+funcionaba porque usa la lista de \emph{Windows}, que sí conoce ese certificado.
+
+\textbf{Arreglo:} la librería \codigo{truststore} le dice a Python ``usa la lista de
+Windows''. La activamos una sola vez en \codigo{froth/\_\_init\_\_.py} y vale para todo
+el proyecto.
+\end{concepto}
+
+\section{Error 2: la puerta cerrada (código 503)}
+
+\begin{concepto}{códigos de estado HTTP}
+Toda respuesta HTTP trae un número de 3 cifras que resume cómo fue:
+\begin{itemize}
+  \item \textbf{2xx} --- bien (\codigo{200 OK}).
+  \item \textbf{4xx} --- el error es \emph{tuyo}: \codigo{404} no existe, \codigo{401} sin permiso,
+        \codigo{429} pides demasiado rápido.
+  \item \textbf{5xx} --- el error es \emph{del servidor}: \codigo{500} se rompió por dentro,
+        \codigo{503} ``no disponible'' (saturado o en mantenimiento).
+\end{itemize}
+Nuestro \codigo{503} venía con un mensaje claro: ``búsqueda anónima limitada por carga;
+usa una API key gratuita''. No había nada que arreglar en el código: era su puerta, cerrada
+para anónimos.
+\end{concepto}
+
+\begin{ojo}
+Regla mental para siempre: \textbf{SSL/certificados $\rightarrow$ problema en tu lado}
+(red, Python, certificados). \textbf{5xx $\rightarrow$ problema en el lado de ellos}
+(esperar, identificarse o cambiar de servicio). Reintentar en bucle sin entender cuál de
+los dos es, es perder el tiempo.
+\end{ojo}
+
+\section{La API key: tu carnet VIP (y por qué es un secreto)}
+
+\begin{concepto}{API key}
+Una \textbf{API key} es una cadena de texto que identifica tus peticiones ante el
+servicio. Con ella OpenAlex te da acceso estable (1 USD/día de uso gratuito, unas 1000
+búsquedas — de sobra). Se envía como un parámetro más: \codigo{api\_key=...}.
+
+Como te identifica \emph{a ti}, es un \textbf{secreto}: quien la tenga gasta tu cuota en
+tu nombre. Por eso:
+\begin{itemize}
+  \item \textbf{Nunca} se escribe dentro del código fuente.
+  \item Vive en el archivo \codigo{.openalex\_key} en la raíz del proyecto (una sola línea).
+  \item Ese archivo está en \codigo{.gitignore}: la lista de cosas que Git (control de
+        versiones) tiene prohibido subir a ningún sitio. Si un día publicas el código en
+        GitHub, tu clave no viaja con él.
+\end{itemize}
+\codigo{config.py} la lee al arrancar (primero busca la variable de entorno
+\codigo{OPENALEX\_API\_KEY}; si no, el archivo) y \codigo{pull.py} la añade a cada petición.
+\end{concepto}
+
+\begin{practica}
+Comprueba tú mismo que la clave está donde debe y fuera del alcance de Git:
+\begin{enumerate}
+  \item Abre \codigo{.gitignore} (con el Bloc de notas) y localiza la línea \codigo{.openalex\_key}.
+  \item En PowerShell, dentro de la carpeta del proyecto:
+        \codigo{Get-Content .openalex\_key} \quad (verás tu clave — solo tú).
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+SSL falló en tu máquina (arreglado con truststore); el 503 era el servidor saturado
+rechazando anónimos (arreglado con API key); y una API key es un secreto que vive fuera
+del código y fuera de Git.
+\end{resumen}
+
+\end{document}

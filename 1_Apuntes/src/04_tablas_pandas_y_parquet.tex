@@ -1,0 +1,87 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{04}{Tablas de datos: pandas y el archivo parquet}
+
+\section{Qué conseguimos hoy}
+
+El primer botín del proyecto: \textbf{126 papers reales} sobre tu topic, guardados en
+\codigo{data/processed/papers.parquet}. Este apunte explica qué es esa ``tabla'' y por qué
+se guarda así.
+
+\begin{concepto}{DataFrame (pandas)}
+\codigo{pandas} es LA librería de tablas en Python, y su objeto estrella es el
+\textbf{DataFrame}: una tabla con filas y columnas, como una hoja de Excel pero manejada
+con código. La nuestra tiene una fila por paper y estas columnas:
+
+\begin{center}
+\begin{tabular}{ll}
+\codigo{id}, \codigo{doi} & identificadores únicos del paper \\
+\codigo{title}, \codigo{year} & título y año \\
+\codigo{citations} & cuántas veces lo han citado \\
+\codigo{authors} & autores (texto ``A; B; C'') \\
+\codigo{abstract} & el resumen — \textbf{la materia prima del ML} \\
+\codigo{query} & con qué búsqueda apareció (para depurar) \\
+\end{tabular}
+\end{center}
+
+Con un DataFrame haces en una línea cosas que en Excel serían dolorosas:
+\codigo{df.drop\_duplicates(subset="id")} quita papers repetidos;
+\codigo{df[df["abstract"].str.len() > 20]} filtra los que no tienen resumen;
+\codigo{df.sort\_values("citations")} ordena por citas.
+\end{concepto}
+
+\section{La limpieza importa más de lo que parece}
+
+\codigo{pull.py} no guarda lo que llega tal cual. Hace tres limpiezas:
+\begin{enumerate}
+  \item \textbf{Deduplicar}: el mismo paper puede aparecer en varias búsquedas
+        (``lepidolite flotation'' y ``lithium mica flotation'' traen solapados).
+  \item \textbf{Filtrar sin-abstract}: sin resumen no hay significado que vectorizar.
+  \item \textbf{Reconstruir el abstract} (ver Apunte 02).
+\end{enumerate}
+
+\begin{ojo}
+En nuestros 126 papers se colaron algunos \textbf{off-topic} (p.\ ej.\ uno de
+telecomunicaciones). ¿Por qué? Colisión de siglas: buscamos ``LCT'' (un tipo de pegmatita)
+y también existe en otros campos. No lo arreglamos a mano: en las Fases 2--3 el propio ML
+los apartará, porque sus \emph{vectores} quedarán lejos de los de flotación. Los datos
+reales siempre traen ruido; el sistema debe tolerarlo.
+\end{ojo}
+
+\begin{concepto}{parquet vs.\ CSV}
+Podíamos guardar la tabla como \codigo{.csv} (texto plano separado por comas). Elegimos
+\textbf{parquet} porque:
+\begin{itemize}
+  \item \textbf{Comprime}: ocupa varias veces menos.
+  \item \textbf{Guarda por columnas}: leer solo \codigo{year} y \codigo{citations} de
+        100\,000 papers no obliga a leer los abstracts.
+  \item \textbf{Conserva los tipos}: en CSV todo vuelve como texto y hay que re-adivinar
+        qué era número; parquet recuerda que \codigo{year} es un entero.
+\end{itemize}
+Es el formato estándar en data science moderno. La librería \codigo{pyarrow} es quien
+sabe leerlo/escribirlo; pandas la usa por debajo con
+\codigo{df.to\_parquet()} y \codigo{pd.read\_parquet()}.
+\end{concepto}
+
+\begin{practica}
+Mira tu botín con tus propias manos. En PowerShell, dentro de la carpeta del proyecto,
+abre un Python interactivo con \codigo{.venv\textbackslash Scripts\textbackslash python.exe}
+y escribe línea a línea:
+\begin{enumerate}
+  \item \codigo{import pandas as pd}
+  \item \codigo{df = pd.read\_parquet("data/processed/papers.parquet")}
+  \item \codigo{len(df)} \quad (¿cuántos papers?)
+  \item \codigo{df.columns} \quad (las columnas)
+  \item \codigo{df.sort\_values("citations", ascending=False).head(3)[["title","year"]]}
+  \item \codigo{exit()} para salir.
+\end{enumerate}
+Acabas de hacer tu primer análisis de datos en pandas.
+\end{practica}
+
+\begin{resumen}
+Un DataFrame es una tabla programable; limpiamos duplicados y sin-abstract; y parquet es
+el formato comprimido, por columnas y con tipos que usa el data science serio.
+\end{resumen}
+
+\end{document}

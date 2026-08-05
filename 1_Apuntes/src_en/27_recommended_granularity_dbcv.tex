@@ -1,0 +1,43 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{27}{Recommended granularity: let the data choose (DBCV)}
+
+\section{The question that started this}
+
+``I want a \emph{set to recommended} button with a REAL statistical reason: not a standard
+value, but one computed every time.'' Exactly the right attitude: fixed defaults are opinions;
+the data changes with every corpus.
+
+\section{The right metric: DBCV}
+
+\begin{concepto}{DBCV (Density-Based Cluster Validity)}
+To evaluate a \emph{density-based} clustering (HDBSCAN) not just any metric will do: the famous
+\emph{silhouette}, for instance, assumes round, compact clusters. \textbf{DBCV} is the family's
+native metric: it rewards clusterings whose groups are \textbf{dense inside} and
+\textbf{well separated outside}, respecting irregular shapes.
+In code: \codigo{hdbscan.HDBSCAN(gen\_min\_span\_tree=True).relative\_validity\_}.
+\end{concepto}
+
+\begin{concepto}{the sweep}
+\codigo{cluster.recommend\_min\_cluster\_size()} tries EVERY granularity from 3 to 20, computes
+the DBCV validity of each, discards the degenerate ones (a single cluster is not a clustering)
+and returns the winner plus a diagnostic table. With today's enlarged corpus: recommended
+$= 7$ (validity 0.51). If the corpus changes tomorrow, it recomputes by itself (cached by data
+version).
+\end{concepto}
+
+\begin{ojo}
+The recommendation is a \emph{statistical optimum}, not a final truth: it optimises density and
+separation, not ``which story serves the expert''. That is why the slider is still there,
+wandering is allowed and the button always brings you back. Machine proposes; human disposes
+(the pattern of all of Froth).
+\end{ojo}
+
+\begin{resumen}
+The ``Use recommended'' button does not store a magic number: it sweeps granularities and picks
+the one maximising DBCV, the native quality metric of density-based clustering, recomputed for
+each corpus. Real statistics, with the slider free for exploring.
+\end{resumen}
+
+\end{document}

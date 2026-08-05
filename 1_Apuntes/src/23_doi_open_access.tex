@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{23}{DOI, open access y la lista de lectura}
+
+\section{La feature nueva: del ranking a la lectura}
+
+El buscador ya rankeaba papers; ahora además te lleva a \textbf{leerlos}: cada resultado
+trae dos enlaces, \textbf{DOI} (la página oficial del paper) y \textbf{open PDF} (el PDF
+gratuito, cuando existe). En tu corpus: \textbf{85 de 126 papers (67\%) tienen PDF de acceso
+abierto} y 116/126 tienen DOI.
+
+\begin{concepto}{DOI (Digital Object Identifier)}
+El \textbf{DOI} es el ``número de cédula'' permanente de un paper: \codigo{10.1016/j...}.
+La URL \codigo{https://doi.org/[DOI]} siempre lleva a la página oficial del editor, aunque
+la revista cambie de sitio web. Es la forma correcta de citar y de llegar al texto; si el
+paper es de pago, ahí usas tus accesos de universidad.
+\end{concepto}
+
+\begin{concepto}{open access (OA)}
+Un paper es \textbf{open access} cuando existe una copia legalmente gratuita: en la propia
+revista, en repositorios (arXiv, HAL...) o en la página de la universidad del autor. OpenAlex
+rastrea dónde está esa copia y nos da la URL (\codigo{oa\_url}). Nosotros solo pedimos un
+campo más en el \codigo{select} del pull (\codigo{open\_access}) — una línea de código,
+y el pipeline regeneró todo lo demás solo.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Enlazar sí, descargar masivamente no.} Froth te da el ENLACE y tú haces clic: la
+lectura ocurre de tu lado, con tus permisos. Descargar PDFs en masa desde editoriales viola
+sus términos de uso (riesgo previsto en el plan desde el día 1). Las herramientas serias
+(Connected Papers, etc.) hacen exactamente esto mismo: rankear + enlazar.
+\end{ojo}
+
+\section{Bonus del día: el vigilante lento de Streamlit}
+
+La app tardaba mucho en arrancar y el log se llenaba de avisos de \codigo{torchvision}.
+Diagnóstico: el \emph{file watcher} de Streamlit (auto-recarga al editar código) intenta
+examinar los cientos de módulos de \codigo{transformers}, uno por uno. Solución: apagarlo en
+\codigo{.streamlit/config.toml} (\codigo{fileWatcherType = "none"}). Lección doble:
+(1) un log ruidoso no siempre es un error fatal — hay que leer QUÉ dice; (2) las herramientas
+de desarrollo cómodas a veces cuestan rendimiento.
+
+\begin{resumen}
+Cada resultado del buscador ahora enlaza al DOI (página oficial) y al PDF open access cuando
+existe (67\% de tu corpus). Enlazamos, no descargamos en masa. Y la app arranca más rápido
+tras apagar el file watcher de Streamlit.
+\end{resumen}
+
+\end{document}

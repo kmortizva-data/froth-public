@@ -1,0 +1,87 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{04}{Data tables: pandas and the parquet file}
+
+\section{What we got today}
+
+The project's first haul: \textbf{126 real papers} on your topic, saved in
+\codigo{data/processed/papers.parquet}. This note explains what that ``table'' is and why it
+is saved that way.
+
+\begin{concepto}{DataFrame (pandas)}
+\codigo{pandas} is THE table library in Python, and its star object is the
+\textbf{DataFrame}: a table with rows and columns, like an Excel sheet but driven by code.
+Ours has one row per paper and these columns:
+
+\begin{center}
+\begin{tabular}{ll}
+\codigo{id}, \codigo{doi} & unique identifiers of the paper \\
+\codigo{title}, \codigo{year} & title and year \\
+\codigo{citations} & how many times it has been cited \\
+\codigo{authors} & authors (text ``A; B; C'') \\
+\codigo{abstract} & the summary, \textbf{the raw material of the ML} \\
+\codigo{query} & which search it turned up in (for debugging) \\
+\end{tabular}
+\end{center}
+
+With a DataFrame you do in one line things that would be painful in Excel:
+\codigo{df.drop\_duplicates(subset="id")} removes repeated papers;
+\codigo{df[df["abstract"].str.len() > 20]} filters out the ones with no abstract;
+\codigo{df.sort\_values("citations")} sorts by citations.
+\end{concepto}
+
+\section{Cleaning matters more than it looks}
+
+\codigo{pull.py} does not save what arrives as it arrives. It does three cleanups:
+\begin{enumerate}
+  \item \textbf{Deduplicate}: the same paper can show up in several searches (``lepidolite
+        flotation'' and ``lithium mica flotation'' bring overlapping results).
+  \item \textbf{Filter out the abstract-less}: with no summary there is no meaning to vectorise.
+  \item \textbf{Rebuild the abstract} (see Note 02).
+\end{enumerate}
+
+\begin{ojo}
+A few \textbf{off-topic} papers slipped into our 126 (for example one about
+telecommunications). Why? An acronym collision: we searched ``LCT'' (a type of pegmatite) and
+it also exists in other fields. We are not fixing it by hand: in Phases 2 and 3 the ML itself
+will set them aside, because their \emph{vectors} will land far from the flotation ones. Real
+data always carries noise; the system has to tolerate it.
+\end{ojo}
+
+\begin{concepto}{parquet vs.\ CSV}
+We could have saved the table as \codigo{.csv} (plain comma-separated text). We chose
+\textbf{parquet} because:
+\begin{itemize}
+  \item \textbf{It compresses}: it takes several times less space.
+  \item \textbf{It stores by column}: reading only \codigo{year} and \codigo{citations} from
+        100\,000 papers does not force you to read the abstracts.
+  \item \textbf{It keeps the types}: in CSV everything comes back as text and you have to
+        re-guess what was a number; parquet remembers that \codigo{year} is an integer.
+\end{itemize}
+It is the standard format in modern data science. The \codigo{pyarrow} library is the one
+that knows how to read and write it; pandas uses it underneath with
+\codigo{df.to\_parquet()} and \codigo{pd.read\_parquet()}.
+\end{concepto}
+
+\begin{practica}
+Look at your haul with your own hands. In PowerShell, inside the project folder, open an
+interactive Python with \codigo{.venv\textbackslash Scripts\textbackslash python.exe} and
+type line by line:
+\begin{enumerate}
+  \item \codigo{import pandas as pd}
+  \item \codigo{df = pd.read\_parquet("data/processed/papers.parquet")}
+  \item \codigo{len(df)} \quad (how many papers?)
+  \item \codigo{df.columns} \quad (the columns)
+  \item \codigo{df.sort\_values("citations", ascending=False).head(3)[["title","year"]]}
+  \item \codigo{exit()} to leave.
+\end{enumerate}
+You have just done your first data analysis in pandas.
+\end{practica}
+
+\begin{resumen}
+A DataFrame is a programmable table; we clean duplicates and abstract-less rows; and parquet
+is the compressed, columnar, type-preserving format that serious data science uses.
+\end{resumen}
+
+\end{document}

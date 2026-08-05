@@ -1,0 +1,225 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{45}{Zoom semántico: por qué 10.921 papers caben en pantalla y 1.772 no}
+
+\section{Glosario en palabras simples}
+
+\begin{itemize}
+  \item \textbf{Renderizar}: dibujar en la pantalla. Cada punto, cada línea, cada letra
+        que ves alguien tuvo que pintarla.
+  \item \textbf{DOM}: la lista de objetos que el navegador guarda para cada cosa
+        dibujada en una página. Si dibujas 10.000 círculos como objetos, el navegador
+        guarda 10.000 fichas y las revisa continuamente.
+  \item \textbf{SVG}: forma de dibujar donde CADA figura es un objeto del DOM. Cómoda
+        (puedes darle clic a cada una) pero cara: miles de objetos ahogan al navegador.
+  \item \textbf{WebGL}: forma de dibujar que le pasa los puntos a la \textbf{tarjeta
+        gráfica} (la GPU). La GPU pinta millones de puntos a la vez porque para eso está
+        hecha. No guarda una ficha por punto.
+  \item \textbf{GPU}: el chip que dibuja. Tu portátil tiene una RTX 5060. Hace una cosa
+        muy bien: la misma operación sobre miles de datos \emph{en paralelo}.
+  \item \textbf{Hilo principal} (\emph{main thread}): el único carril por donde el
+        navegador atiende TODO: tus clics, la rueda del ratón, los cálculos, el dibujo.
+        Si algo lo ocupa, la página deja de responder aunque no esté ``rota''.
+  \item \textbf{Fotograma} (\emph{frame}): una imagen de la pantalla. Para que algo se
+        sienta fluido hacen falta unos 60 por segundo, o sea $\approx$16 ms para cada uno.
+  \item \textbf{Física de grafo}: simulación donde los nodos se repelen y las aristas
+        tiran como muelles, hasta que el dibujo se ``acomoda'' solo.
+  \item \textbf{Percentil}: si ordenas 201 números de menor a mayor, el percentil 90 es
+        el valor que deja por debajo al 90\% de ellos. Sirve para decir ``los grandes''
+        sin inventarse un número.
+  \item \textbf{Centroide}: el punto medio de un grupo. Donde colocamos su nombre.
+\end{itemize}
+
+\section{El problema, tal como apareció}
+
+Subimos el tope de papers de la vista \emph{Network} de 400 a 2.500 y quedaron 1.772
+nodos en pantalla. Yo escribí ``no se rompe nada''. Tu pantallazo dijo otra cosa: una
+bola de pelo congelada, sin zoom ni desplazamiento.
+
+Y sin embargo, en la misma sesión, la vista \emph{Atlas} dibujó \textbf{10.921 papers} y
+respondía. Casi seis veces más puntos, y fluida. Ese contraste es el apunte entero.
+
+\begin{concepto}{Dibujar no es simular}
+La Network usa \textbf{física}: en cada fotograma recalcula las fuerzas entre nodos y,
+cuando mueves el ratón, comprueba nodo por nodo cuál está debajo del cursor. Con 1.772
+nodos eso llena los 16 ms del fotograma y no queda tiempo para atender la rueda. El zoom
+no estaba roto: \textbf{el carril estaba ocupado}.
+
+El Atlas no simula nada. Las posiciones ya están calculadas de antes (UMAP, apunte 08) y
+guardadas. Solo las manda a la GPU y esta las pinta. Por eso 10.921 le cuestan menos que
+1.772 con física.
+\end{concepto}
+
+\begin{ojo}
+\textbf{Mi error, con todas las letras.} Cuando dije ``no se rompe nada'' yo había medido dos cosas: cuánto tarda Python en
+\emph{generar} el HTML, y cuánto tarda vis.js en \emph{asentar} el dibujo. Las dos
+baratas. \textbf{No medí la interacción}, que es justo lo que se rompió.
+
+La lección, que vale para todo el proyecto: \textbf{que algo sea rápido de PRODUCIR no
+dice nada sobre si es fluido de USAR}. Son dos medidas distintas y hay que tomar las dos.
+\end{ojo}
+
+\section{La otra mitad: 201 nombres no caben}
+
+Arreglado el motor de dibujo, aparece el problema humano. El Atlas pintaba los puntos con
+un color por subtema y nada más: bonito, y mudo. Para saber qué era cada mancha había que
+irse a la leyenda lateral y cruzar colores a ojo.
+
+La solución obvia (poner el nombre de cada subtema sobre su centroide) no funciona:
+en el corpus de LIBS/FTIR hay \textbf{201 subtemas}. Doscientos un rótulos a la vez son
+una pared de texto, no un mapa.
+
+\subsection{Mini-ejemplo de juguete (antes de la teoría)}
+
+Imagina un mapa de solo 5 territorios, con este tamaño en papers:
+
+\begin{center}
+\begin{tabular}{lccccc}
+\hline
+Territorio & A & B & C & D & E \\
+Papers     & 100 & 60 & 30 & 12 & 8 \\
+\hline
+\end{tabular}
+\end{center}
+
+Ahora piensa en Google Maps. Muy lejos ves ``España''. Te acercas y aparece ``Madrid''.
+Más cerca, ``Chamberí''. Más cerca todavía, el nombre de la calle. \textbf{Lo que se
+muestra cambia con la distancia}, no solo el tamaño de las letras. Eso es zoom semántico.
+
+Aplicado a nuestros 5 territorios: desde lejos solo A; te acercas y aparecen A y B;
+más cerca A, B, C; encima del todo, los cinco. La pregunta interesante es
+\textbf{dónde pones los cortes}, y ahí es donde no vale inventarse un número.
+
+\begin{concepto}{Zoom semántico (Shneiderman, 1996)}
+La regla clásica de visualización dice: \emph{``vista general primero, luego zoom y
+filtro, y el detalle solo cuando se pide''}. Traducido a Froth: primero unos pocos
+territorios grandes con nombre, y los subtemas pequeños solo cuando te acercas a su zona.
+Nunca los 201 de golpe.
+\end{concepto}
+
+\section{Los cortes salen de TUS datos (la regla de siempre)}
+
+Un umbral inventado (``muestra los que tengan más de 50 papers'') funcionaría en un
+corpus y sería absurdo en otro. Así que los cortes se calculan con los
+\textbf{percentiles del tamaño de los subtemas de ese corpus concreto}: percentil 90
+(los grandes de verdad), 75, 50, y 0 (todos).
+
+Dos corpus reales tuyos, con los números que salieron:
+
+\begin{center}
+\begin{tabular}{lrrl}
+\hline
+Corpus & Papers & Subtemas & Cortes calculados (p90/p75/p50/p0) \\
+\hline
+Beauvoir (tu tesis)  & 3.867  & 96  & 54 / 35 / 19 / 7 \\
+LIBS + FTIR          & 10.921 & 201 & 76 / 37 / 20 / 7 \\
+Economía circular    & 4.946  & 69  & 142 / 69 / 33 / 7 \\
+\hline
+\end{tabular}
+\end{center}
+
+Fíjate en la tercera fila: economía circular tiene MENOS papers que LIBS pero su corte de
+``satélite'' es casi el doble (142 frente a 76), porque sus subtemas son más gordos y
+menos numerosos. Un número fijo habría dejado ese mapa vacío o saturado. El corpus decide.
+
+Lo que ves al acercarte, medido en el navegador sobre los 10.921 papers:
+
+\begin{center}
+\begin{tabular}{llrr}
+\hline
+Nivel & Metáfora & Corte & Nombres en pantalla \\
+\hline
+1 & Satélite & $\geq$ 76 & 21 \\
+2 & Regional & $\geq$ 37 & 52 \\
+3 & Local    & $\geq$ 20 & 106 \\
+4 & Calle    & $\geq$ 7  & 201 \\
+\hline
+\end{tabular}
+\end{center}
+
+Y todavía hay una segunda red de seguridad: aunque en el nivel 4 se manden los 201
+rótulos, deck.gl aplica un \textbf{filtro de colisión} que descarta los que se pisarían,
+dejando ganar al territorio más grande. Los 201 solo pueden aparecer juntos si de verdad
+caben.
+
+\begin{practica}
+Abre el Atlas de un corpus grande y haz esto en orden:
+\begin{enumerate}
+  \item Sin tocar nada, cuenta los nombres que ves. Deberían ser pocos y todos de
+        territorios gordos.
+  \item Acerca la rueda dos o tres pasos sobre una zona. Verás aparecer nombres nuevos,
+        y solo en la zona donde estás mirando.
+  \item Pulsa un subtema en la leyenda lateral: la cámara vuela hasta él.
+  \item Pulsa \textbf{``Whole map''} para volver a la vista general.
+\end{enumerate}
+Si en el paso 1 ves una pared de texto, el cálculo de percentiles no se está aplicando:
+avísame y lo miramos.
+\end{practica}
+
+\section{El tropiezo que enseña más que el éxito}
+
+El plan original para ``clic en un subtema'' era distinto y más ambicioso: recalcular un
+UMAP \textbf{solo con los papers de ese subtema}, para revelar su estructura interna, que
+el UMAP global aplana. El plan decía ``unos 2 segundos, y se puede cachear''.
+
+Antes de construirlo, lo medí: \textbf{29,2 segundos} para 500 papers, con la función
+real (\texttt{cluster.reduce\_to\_2d}). No 2 segundos. Casi treinta.
+
+Con 96 subtemas en tu corpus de tesis, explorar el mapa habría sido esperar medio minuto
+por cada clic. Inaceptable. Así que el clic hace algo mucho más humilde: \textbf{vuela la
+cámara a las coordenadas que ya existen}. Cero cálculo, cero espera.
+
+\begin{ojo}
+\textbf{La cifra del plan era mía, y era falsa.} Ese ``$\sim$2s'' no venía de ninguna medición: lo escribí yo por intuición y quedó en el
+plan como si fuera un dato. Si no lo llego a medir antes de programar, habríamos
+construido una función inservible y lo habrías descubierto tú, usándola.
+
+Regla: \textbf{una cifra en un plan no es un dato hasta que alguien la mide}. Y las
+mediciones se hacen ANTES de construir, no después.
+\end{ojo}
+
+Se pierde algo real, y conviene decirlo: la sub-estructura interna de cada subtema sigue
+sin verse. Queda anotado como posible mejora futura (calcularla una sola vez, en el
+momento de procesar el corpus, no al hacer clic).
+
+\section{La división del trabajo que salió de aquí}
+
+En vez de intentar que una vista lo hiciera todo, cada una hace lo que sabe hacer:
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+ & \textbf{Network} & \textbf{Atlas} \\
+\hline
+Motor          & vis.js con física   & deck.gl / WebGL (GPU) \\
+Tope de papers & 400                 & el corpus entero \\
+Qué muestra    & quién se parece a quién & el territorio completo \\
+Para qué sirve & leer el núcleo más citado & orientarte y elegir dónde mirar \\
+\hline
+\end{tabular}
+\end{center}
+
+Bajar la Network de 2.500 a 400 \textbf{no es una regresión}: es reconocer que la física
+sirve para ver relaciones entre pocos nodos, y estorba para ver un continente. Si 400 te
+sabe a poco, el número está en la configuración y se sube sin tocar código; pero la
+fluidez solo la puede juzgar tu máquina, no la mía.
+
+\begin{resumen}
+Dibujar en la GPU (WebGL) escala; simular física por fotograma, no. Y cuando hay más
+nombres que sitio, se muestran por niveles de zoom, con los cortes calculados a partir de
+los percentiles de TU corpus, no de un número inventado.
+\end{resumen}
+
+\section{Para saber más}
+
+\begin{itemize}
+  \item Shneiderman, B. (1996), \emph{The Eyes Have It}: el origen del ``overview first,
+        zoom and filter, then details-on-demand''.
+  \item \texttt{nightingaledvs.com/how-to-visualize-a-graph-with-a-million-nodes}
+  \item \texttt{cambridge-intelligence.com/visualizing-graphs-webgl}
+  \item El código: \texttt{froth/atlas.py} (funciones \texttt{minCountForZoom},
+        \texttt{makeLabels} y \texttt{flyTo}).
+\end{itemize}
+
+\end{document}

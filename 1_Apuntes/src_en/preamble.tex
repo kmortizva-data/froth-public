@@ -1,0 +1,36 @@
+% preamble.tex - shared style for the ENGLISH notes.
+% Mirrors src/preamble.tex exactly in layout and colour, so both volumes look like the same
+% book. Only the wording of the boxes changes, plus one project rule: no em dashes in
+% English, public-facing text (a colon or a comma instead).
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{xcolor}
+\definecolor{litblue}{RGB}{31,79,121}
+\definecolor{litgreen}{RGB}{27,94,32}
+\definecolor{litorange}{RGB}{230,81,0}
+\usepackage{parskip}
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\color{litblue}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{litblue}}{\thesubsection}{0.6em}{}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{litblue}Froth: ML study notes}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\usepackage[colorlinks=true,linkcolor=litblue,urlcolor=litblue]{hyperref}
+
+% Header of each note: \cabecera{number}{title}
+\newcommand{\cabecera}[2]{%
+  \begin{tcolorbox}[colback=litblue,coltext=white,colframe=litblue,arc=2mm]
+    {\Large\bfseries Note #1: #2}\\[3pt]
+    {\small Froth project · learning Machine Learning by building it}
+  \end{tcolorbox}\vspace{0.8em}}
+
+% Themed boxes
+\newtcolorbox{concepto}[1]{colback=blue!4,colframe=litblue,title={Concept: #1},arc=1.5mm}
+\newtcolorbox{practica}{colback=green!5,colframe=litgreen,title={Try it yourself (hands on the keyboard)},arc=1.5mm}
+\newtcolorbox{ojo}{colback=orange!8,colframe=litorange,title={Watch out / common mistake},arc=1.5mm}
+\newtcolorbox{resumen}{colback=gray!8,colframe=gray!60,title={In one sentence},arc=1.5mm}
+
+\newcommand{\codigo}[1]{\texttt{#1}}

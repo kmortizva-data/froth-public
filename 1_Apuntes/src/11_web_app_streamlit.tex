@@ -1,0 +1,74 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{11}{Tu primera web app con Streamlit}
+
+\section{Qué construimos}
+
+Una \textbf{página web que corre en tu propia PC}: una caja de búsqueda donde escribes una
+frase y ves los papers más relevantes en tabla. Es el archivo \codigo{app.py} en la raíz del
+proyecto, y por dentro usa el \emph{mismo} \codigo{most\_similar()} de la Fase 2. Cero motor
+nuevo: solo una cara bonita encima.
+
+\begin{concepto}{Streamlit}
+\textbf{Streamlit} es una librería que convierte un script de Python en una web interactiva
+sin que tengas que saber HTML, CSS ni JavaScript. Escribes \codigo{st.title(...)},
+\codigo{st.text\_input(...)}, \codigo{st.dataframe(...)} y Streamlit dibuja la página. Cada
+vez que el usuario cambia algo (escribe, mueve el slider), Streamlit \textbf{re-ejecuta el
+script} de arriba a abajo y actualiza la vista.
+\end{concepto}
+
+\section{Cómo arrancarla}
+
+\begin{practica}
+Desde la carpeta del proyecto, en PowerShell:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m streamlit run app.py}
+\end{enumerate}
+Se abre sola una pestaña en \codigo{http://localhost:8501}. Escribe una consulta, mueve el
+slider de resultados y mira la tabla. Para apagarla: \textbf{Ctrl + C} en PowerShell.
+\end{practica}
+
+\begin{ojo}
+``localhost'' significa ``esta misma máquina''. La web NO está en internet: vive y corre en tu
+PC. Por eso no pagas dominio ni hosting. Para que otros la usen: o descargan el repo y la corren
+igual, o la subes gratis a Streamlit Community Cloud / Hugging Face Spaces (ver más abajo).
+\end{ojo}
+
+\section{Dos trucos del código que vale la pena entender}
+
+\begin{concepto}{caché: no recargar lo pesado en cada clic}
+Como Streamlit re-ejecuta el script en cada interacción, cargar los 126 papers y sus vectores
+cada vez sería lento. El decorador \codigo{@st.cache\_resource} sobre la función
+\codigo{load\_data()} hace que se carguen \textbf{una sola vez} y se reutilicen. El modelo
+SPECTER se cachea igual (variable global en \codigo{embed.py}).
+\end{concepto}
+
+Además, \codigo{app.py} importa \codigo{from froth import config, embed}: la web es solo un
+cliente del motor que ya tienes. Si mañana mejoras \codigo{most\_similar}, la web mejora sola.
+
+\section{Cómo se comparte (tu meta de portafolio)}
+
+\begin{itemize}
+  \item \textbf{Descargar y correr:} subes el repo a GitHub; cualquiera hace \codigo{git clone},
+        instala \codigo{requirements.txt} y lo corre en su PC. Gratis. (GitHub guarda el código,
+        no lo ejecuta por el visitante.)
+  \item \textbf{Link público gratis (opcional):} Streamlit Community Cloud o Hugging Face Spaces
+        hospedan la app gratis y dan una URL pública. Sin dominio de pago.
+\end{itemize}
+
+\section{Lo que viene (visión)}
+
+Esta app es el \textbf{Módulo Tesis}: entrada = un título/frase. Más adelante se añade el
+\textbf{Módulo Tarea/Investigación}: adjuntas PDFs de instrucciones + escribes lo que te piden,
+y el mismo motor te devuelve los papers relevantes. Y en la Fase 3, además de la lista, aquí
+mismo aparecerá el \textbf{bubble map} de subtemas.
+
+\begin{resumen}
+Streamlit convierte tu script en una web local (localhost) sin saber HTML. \codigo{app.py}
+envuelve \codigo{most\_similar} en una caja de búsqueda; se arranca con \codigo{streamlit run
+app.py}, se comparte por GitHub o hosting gratis, y es la base de los dos módulos futuros.
+\end{resumen}
+
+\end{document}

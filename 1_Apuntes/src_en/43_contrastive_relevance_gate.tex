@@ -1,0 +1,120 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{43}{The relevance gate: separating wheat from chaff in 190,000 papers}
+
+\section{Glossary in plain words (read this first)}
+
+\begin{itemize}
+  \item \textbf{Vector}: a paper's numerical ``fingerprint'', a list of 768 numbers capturing
+        its meaning. Papers about the same thing have similar fingerprints (note 05).
+  \item \textbf{Cosine}: the gauge of likeness between two fingerprints. It runs from $-1$ to
+        $1$: near $1$ $=$ they talk about the same thing; near $0$ $=$ nothing in common.
+  \item \textbf{Centroid}: the ``average'' of a group of vectors, its centre of gravity, like
+        the mean grade of a batch of ore.
+  \item \textbf{Threshold}: the cut-off value. Above it: the paper enters the map. Below: out.
+  \item \textbf{Bimodal}: a distribution with TWO humps. If the good ones make one and the bad
+        ones another, the valley between them is the natural cut.
+  \item \textbf{Hub / cluster}: a group of papers very similar to each other, a subtopic.
+\end{itemize}
+
+\section{The problem YOU found}
+
+With the uncapped harvest (190,000 papers), you opened the tailings map and saw \emph{``even
+human resources stuff, in colour''}. Your hypothesis was exact: no word failed to vectorise,
+what failed was \textbf{the gate} deciding what enters the map.
+
+The old gate: relevance $= \cos(\mbox{paper},\ \mbox{topic TITLE})$, with a fixed threshold of
+0.55. Measured on tailings: it accepted \textbf{93\%} of 16,681 papers, including chlamydiosis
+in koalas (because of biological ``iron''), ``event management'' (because of ``management'')
+and ``Circular Economy in SMEs'' (because of ``circular economy''). A short phrase with generic
+magnets cannot tell facets apart. On top of that, the old ceiling of 25 results per term was an
+ACCIDENTAL precision filter: removing it (the right decision, coverage is the mission) let in
+the deep tail of every term.
+
+\section{Toy mini-example (do the arithmetic with me)}
+
+Fingerprints of only 2 numbers (instead of 768). The title points at $T=(1,\ 0)$. Three papers:
+
+\begin{center}
+\begin{tabular}{lcc}
+ & vector & $\cos$ with the title \\
+\hline
+A: tailings flotation   & $(0.98,\ 0.20)$ & $0.98$ \\
+B: personnel management & $(0.60,\ 0.80)$ & $0.60$ \\
+C: koalas               & $(0.50,\ 0.87)$ & $0.50$ \\
+\end{tabular}
+\end{center}
+
+With a threshold of 0.55, B enters the map! ($0.60 > 0.55$). That is your human resources hub.
+
+The \textbf{contrastive gate} asks a better question: do you resemble my topic MORE than you
+resemble the generic?
+\[
+v_2 = \cos(\mbox{paper},\ \mbox{core}) - 0.4 \cdot \cos(\mbox{paper},\ \mbox{global})
+\]
+where core $\approx A$ (the papers stuck closest to the title) and global $=$ the average of
+all of them $\approx (0.74,\ 0.67)$ normalised. The arithmetic:
+\[
+v_2(A) = 1.00 - 0.4 \cdot 0.86 = \mathbf{0.66}
+\qquad
+v_2(B) = 0.75 - 0.4 \cdot 0.98 = \mathbf{0.36}
+\]
+B ends up far from any reasonable cut. With 768 numbers and 16,681 papers, this same thing
+produced a \textbf{bimodal} distribution with a valley at $+0.399$, and the threshold is chosen
+in THAT valley, per corpus (a computed knob, not a fossil constant).
+
+\begin{concepto}{the contrastive idea}
+It is the same trick that fixed the KeyBERT titles (note 40): reward closeness to the core AND
+punish closeness to the generic mass. Shared genericness stops counting as merit.
+\end{concepto}
+
+\section{Stumble 1: the per-paper gate flattened the maps}
+
+The first version judged paper by paper\ldots{} and tailings went from 115 subtopics to
+\textbf{2} (at ANY granularity, the DBCV sweep confirmed it). Why? Keeping only ``those similar
+to the core'' leaves a surviving population that is a homogeneous band: a ball with no internal
+valleys, which HDBSCAN cannot subdivide. We gained precision and destroyed the STRUCTURE, which
+is half the product.
+
+The fix came out of your own sentence (``an HR hub, \emph{in colour}''): the rubbish arrives in
+\textbf{coherent hubs}, so the gate must judge HUBS: (1) map EVERYTHING, (2) score each cluster
+by the mean $v_2$ of its members, (3) throw out whole clusters below the valley of those means,
+(4) loose noise is judged individually. Measured: the particle physics, astronomy, HR and koala
+hubs died whole; the tailings mortar one did not lose a single paper; 325 domain subtopics
+intact.
+
+\section{Stumble 2: your double blind uncovered a bias}
+
+You judged 40 borderline cases blind: 62\% agreement, but with a direction. You rescued 11
+papers the machine was throwing out, almost all about \textbf{circular economy}\ldots{} which is
+IN your thesis title. Cause: the global centre points partly towards the topic itself (the
+corpus is full of it), so a paper aligned with the title got a reward from the core AND a
+punishment from the global: a double penalty for its own identity. Fix: \textbf{project out} of
+the global the direction of the core before punishing. Verified: ``Towards Circular Economy
+Metrics'' came back; the koalas and the cheese paper (``Iron Ages''\ldots{} the Iron Age, not the
+mineral) stay out.
+
+Closing honesty: re-measured, your agreement against the final gate came out at 60\%,
+practically the same. The fix won the cases you cared about (the circular economy ones), but the
+$\pm0.04$ frontier around the valley is ambiguous EVEN for the expert (you let the cheese
+through because of the ``Iron''). We tune no further: that would be overfitting to 40 cases.
+
+\begin{ojo}
+The gate's value is at the HUB level (coherent rubbish dies whole, domain structure intact), not
+in decorating the edge. No one-dimensional frontier is perfect; the right flow is machine
+proposes $\to$ expert validates $\to$ the knob is recalibrated where the expert is
+systematically right (circular economy yes, cheese no).
+\end{ojo}
+
+\begin{resumen}
+Old gate: $\cos$ with the title $+$ a fixed threshold $=$ 93\% accepted, koalas in colour.
+New gate: a contrastive score (core vs.\ global WITHOUT the topic's direction) $\to$ bimodal
+$\to$ a valley PER corpus $\to$ judgement by HUBS to preserve structure. Result: 22 of 22
+topics clean with their own threshold, a master set of 77,636 unique relevant papers. Three
+lessons: (1) contrasting against the generic separates what plain likeness cannot; (2) filtering
+individuals can destroy the collective structure, judge the group when the signal is a group
+signal; (3) the human judge finds the biases the metric cannot see, and has their own too.
+\end{resumen}
+
+\end{document}

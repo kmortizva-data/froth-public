@@ -1,0 +1,75 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{24}{What a gap is (and how it is really measured)}
+
+\section{Why they matter}
+
+Every thesis has to contribute something new, and ``new'' almost always means \textbf{working
+where others have not worked}. The problem: the phrase ``research gap'' is used a lot and
+measured little, it is usually the supervisor's hunch. Froth's differentiator is turning the
+gap into a \textbf{measurable signal over the data}, with evidence you can cite.
+
+\section{The 4 measurable types of gap}
+
+\begin{concepto}{1. The SILO (the most valuable)}
+Two communities studying \textbf{very similar} things that \textbf{do not cite each other}:
+they work back to back. It is measured by subtracting two matrices we already have: semantic
+similarity between clusters (high) vs.\ cross-citations (low). \textbf{Your corpus has one}:
+geology $\leftrightarrow$ flotation $=$ similarity 0.69 with \textbf{a single cross-citation}
+(Note 21). Two worlds talking about the same granite without talking to each other. Whoever
+connects those worlds contributes.
+\end{concepto}
+
+\begin{concepto}{2. The SPARSE ZONE}
+Empty regions of the map \emph{between} dense clouds: combinations of topics nobody touched.
+It is measured with spatial density in the embedding space (how many papers live between the
+centroid of A and that of B?).
+\end{concepto}
+
+\begin{concepto}{3. The SCARCE BRIDGE}
+Between two clusters there are only 1 or 2 bridge papers (Note 20's betweenness concentrated
+in very few nodes). If crossing that bridge produces value and almost nobody has crossed it,
+there is room for more travellers.
+\end{concepto}
+
+\begin{concepto}{4. The DORMANT TOPIC}
+A subtopic whose papers are all old: knowledge nobody revisits with modern methods. It is
+measured with the distribution of years per cluster (when was the last paper?).
+\end{concepto}
+
+\section{The warning: mine or desert}
+
+\begin{ojo}
+A hole can be empty for two reasons: because \textbf{nobody explored it} (a mine waiting) or
+because \textbf{there is nothing to find} (a desert, sometimes the combination of topics is
+sterile for good physical or economic reasons). \textbf{No algorithm tells one from the
+other.} That is why Froth \emph{proposes candidates with evidence} and the expert decides.
+Distrust any tool promising ``guaranteed automatic gaps''; ours promises honest candidates
+with their numbers.
+\end{ojo}
+
+\section{Your thesis is already the proof of concept}
+
+The thesis title (flotation of Li micas \textbf{and its impact on} the recovery of by-products
+from the Beauvoir granite) exploits \emph{exactly} silo \#1: it joins the flotation cluster
+with the geology one. Your supervisor found that gap by eye and by experience; Froth found it
+with numbers: high similarity, one cross-citation, and the Beauvoir characterisation paper as
+a lone bridge (Note 20). That double confirmation (expert $+$ data) is the strongest validation
+the method can have.
+
+\section{What comes next (5.1)}
+
+Implement the four signals in \codigo{gaps.py} $\rightarrow$ \codigo{find\_gaps()} will return
+a ranked table: each candidate gap with its type, its evidence (similarity, citations,
+density, years) and the frontier papers already circling it. Afterwards (5.2), the review
+draft will cite those gaps with numbers, not with hunches.
+
+\begin{resumen}
+A measurable gap has 4 shapes: silos (alike but not citing each other), sparse zones, scarce
+bridges and dormant topics. The tool proposes candidates with evidence; the expert tells mines
+from deserts. Your own thesis is the Beauvoir geology-flotation silo, now confirmed with
+numbers.
+\end{resumen}
+
+\end{document}

@@ -1,0 +1,57 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{39}{El LLM como pulidor verificado (nunca como autor)}
+
+\section{La jerarquía de confianza}
+
+El draft v2 es extractivo: verdad garantizada, prosa regular. Un LLM escribe prosa
+excelente... sin garantía de verdad. La arquitectura de la fase 7.6 saca lo mejor de
+ambos SIN heredar el riesgo:
+
+\begin{concepto}{pulir $\neq$ generar}
+El LLM local (Ollama) recibe UNA instrucción estrecha: reescribir el párrafo de una
+sección para que fluya, sin añadir ni quitar afirmaciones, manteniendo cada cita $[n]$
+exactamente una vez. No investiga, no opina, no cita: PULE frases que ya existen.
+El conocimiento viene del corpus; el LLM solo aporta gramática.
+\end{concepto}
+
+\section{La puerta de verificación (el corazón del diseño)}
+
+Confiar no basta: cada sección reescrita pasa por \texttt{\_verified()} en
+\texttt{froth/polish.py}:
+
+\begin{itemize}
+  \item \textbf{Censo de citas}: las citas $[n]$ del texto pulido deben ser EXACTAMENTE
+        las del original (ni una menos = borró evidencia; ni una más = inventó).
+  \item \textbf{Banda de longitud} (0.5--1.7$\times$): fuera de ahí, o resumió de más
+        (perdió afirmaciones) o divagó (probablemente añadió).
+  \item Si CUALQUIER chequeo falla $\rightarrow$ la sección conserva su original
+        extractivo, en silencio. El draft solo puede mejorar, jamás mentir.
+\end{itemize}
+
+Probado sin servidor: la puerta rechazó cita borrada, cita inventada y texto encogido;
+y sin Ollama corriendo el draft queda intacto (fallo suave, como los conectores de
+fuentes).
+
+\section{Por qué LOCAL (Ollama) y no una API}
+
+Decisión tuya de la Fase 6 que aquí paga: gratis (sin cuotas), privado (tu review no
+sale de tu PC), offline, y diferenciador — Elicit/SciSpace/Consensus dependen de OpenAI.
+Tu RTX 5060 corre un modelo 8B cómodamente. Setup en \texttt{docs/OLLAMA\_SETUP.md}
+(un instalador + \texttt{ollama pull llama3.1:8b}, $\sim$5 GB, una sola vez).
+
+\begin{ojo}
+Temperatura 0.2 (casi determinista): para pulir no quieres creatividad, quieres
+obediencia. Y el pulido es una DESCARGA SEPARADA --- el extractivo sigue siendo el
+default visible. La cadena de confianza: mapa medido $\rightarrow$ frases reales
+$\rightarrow$ prosa pulida verificada. Cada eslabón auditable.
+\end{ojo}
+
+\begin{resumen}
+El LLM local reescribe párrafos ya construidos y una puerta automática (censo de citas +
+banda de longitud) descarta cualquier reescritura sospechosa, sección por sección.
+Prosa de LLM con la trazabilidad del extractivo — o nada.
+\end{resumen}
+
+\end{document}

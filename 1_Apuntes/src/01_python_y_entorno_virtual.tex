@@ -1,0 +1,71 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{01}{Python, el motor; y el entorno virtual, la caja de herramientas}
+
+\section{Python: qué es de verdad}
+
+Los archivos \codigo{.py} de la carpeta \codigo{froth/} son texto plano: recetas escritas.
+\textbf{Python} es el programa que sabe leerlas y ejecutarlas (el ``motor''). Por eso el
+primer paso del proyecto fue instalarlo: sin motor, las recetas son papel mojado.
+
+En tu máquina quedó instalado \textbf{Python 3.14}. Cuando escribes
+\codigo{python archivo.py} en una terminal, le estás diciendo: ``motor, ejecuta esta receta''.
+
+\begin{concepto}{librería (package)}
+Casi nada se programa desde cero. Una \textbf{librería} es código empaquetado que otros
+escribieron y tú instalas y reutilizas: \codigo{requests} (hablar con internet),
+\codigo{pandas} (tablas de datos), etc. Se instalan con la herramienta \codigo{pip},
+que viene con Python. Piensa en apps que le instalas al motor.
+\end{concepto}
+
+\section{El problema que resuelve el entorno virtual}
+
+Imagina dos proyectos en tu PC: uno necesita \codigo{pandas} versión 2 y otro la versión 3.
+Si instalas todo ``en el sistema'', se pisan entre sí y algo se rompe. La solución estándar:
+
+\begin{concepto}{entorno virtual (venv)}
+Una \textbf{carpeta-burbuja} (en nuestro caso \codigo{.venv/} dentro del proyecto) que
+contiene una copia privada de Python y sus librerías, exclusiva de este proyecto.
+Lo que instalas dentro no toca nada fuera, y viceversa.
+
+Se creó con: \codigo{python -m venv .venv}
+
+Y desde entonces, para ejecutar cualquier cosa del proyecto usamos el Python \emph{de la
+burbuja}: \codigo{.venv\textbackslash Scripts\textbackslash python.exe}. Esa ruta rara del
+principio de cada comando significa exactamente eso: ``usa el motor de ESTE proyecto''.
+\end{concepto}
+
+\section{requirements.txt: la lista de la compra}
+
+El archivo \codigo{requirements.txt} lista las librerías que el proyecto necesita, con un
+comentario de para qué sirve cada una. Cualquiera (tú en otra PC, un compañero) puede
+recrear el entorno con una sola orden:
+\begin{center}
+\codigo{.venv\textbackslash Scripts\textbackslash python.exe -m pip install -r requirements.txt}
+\end{center}
+En Froth las instalamos \emph{por fases}: hoy solo las de la Fase 1 (\codigo{requests},
+\codigo{pandas}, \codigo{pyarrow}, \codigo{truststore}). Las pesadas de ML llegarán cuando
+toquen.
+
+\begin{ojo}
+Si un comando te dice \codigo{ModuleNotFoundError: No module named 'pandas'}, casi siempre
+significa que ejecutaste con el Python \textbf{del sistema} en vez del de la burbuja.
+Revisa que el comando empiece por \codigo{.venv\textbackslash Scripts\textbackslash python.exe}.
+\end{ojo}
+
+\begin{practica}
+Abre PowerShell (tecla Windows $\rightarrow$ escribe \codigo{powershell} $\rightarrow$ Enter) y:
+\begin{enumerate}
+  \item \codigo{cd "C:\textbackslash Users\textbackslash Bruce Wayne\textbackslash Documents\textbackslash Master Thesis AI"}
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe --version} \quad (debe decir 3.14)
+  \item \codigo{.venv\textbackslash Scripts\textbackslash python.exe -m pip list} \quad (las librerías de tu burbuja)
+\end{enumerate}
+\end{practica}
+
+\begin{resumen}
+Python ejecuta el código; el \codigo{.venv} es la burbuja privada del proyecto con sus
+librerías; \codigo{requirements.txt} es la lista para reconstruirla donde sea.
+\end{resumen}
+
+\end{document}

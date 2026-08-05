@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>
+html, body { margin: 0; padding: 0; background: #18181b; overflow: hidden; height: 100%; }
+iframe { border: none; width: 100%; display: block; background: #18181b; overflow: hidden; }
+</style></head>
+<body>
+<iframe id="inner" scrolling="no"></iframe>
+<script>
+// Minimal vanilla Streamlit component (Phase 7.9): hosts Froth's interactive
+// HTML (pyvis network / D3 reading guide) in an inner iframe and forwards its
+// {frothSelect: <paper id>} postMessage back to Python as the component value.
+// This is the bridge that finally lets clicks INSIDE the visualizations open
+// the Know-more panel - components.html could render them but never listen.
+function send(type, extra) {
+  window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, extra), "*");
+}
+var inner = document.getElementById("inner");
+var lastHtml = null;
+window.addEventListener("message", function (e) {
+  var d = e.data || {};
+  if (d.type === "streamlit:render") {
+    var args = d.args || {};
+    var h = args.height || 600;
+    inner.style.height = h + "px";
+    send("streamlit:setFrameHeight", { height: h });
+    if (args.html && args.html !== lastHtml) {   // re-render only on new data
+      lastHtml = args.html;
+      inner.srcdoc = args.html;
+    }
+    // Keep the inner page's selection UI honest: relay the host-side hub pick on
+    // EVERY render (the Atlas checkboxes went stale after 'Clear pick' otherwise).
+    if (args.sync_hubs !== undefined && inner.contentWindow) {
+      setTimeout(function () {
+        try { inner.contentWindow.postMessage({ frothSyncHubs: args.sync_hubs }, "*"); }
+        catch (e) {}
+      }, 300);
+    }
+  } else if (d.frothSelect !== undefined) {      // bubbled up from the inner iframe
+    send("streamlit:setComponentValue", { value: d.frothSelect, dataType: "json" });
+  } else if (d.frothHubs !== undefined) {        // Atlas legend: hub selection -> Network
+    send("streamlit:setComponentValue",
+         { value: { hubs: d.frothHubs }, dataType: "json" });
+  }
+});
+send("streamlit:componentReady", { apiVersion: 1 });
+</script>
+</body>
+</html>

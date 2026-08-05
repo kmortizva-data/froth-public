@@ -1,0 +1,58 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{38}{Draft v2: blending judges with Borda and citing by construction}
+
+\section{Assembling without inventing}
+
+\texttt{draft\_review\_v2()} puts the three pieces (notes 35 to 37) together into a per-cluster
+draft: one sentence OPENS (the panorama), 2 sentences BACK IT UP (typical but diverse), and
+each carries its $[n]$ citation pointing at the paper it came from verbatim. The numbering is
+global and in order of appearance; the same engine emits the \texttt{.bib} for LaTeX/Zotero.
+Nothing is generated: nothing can be hallucinated.
+
+\section{The opener problem and the Borda solution}
+
+The plan was ``TextRank opens'' (its panorama sentences are ideal). But in geology it opened
+with the exogenous deposits sentence, the dense-subgroup capture from note 36. The centroid
+scores (cosine 0 to 1) and TextRank's (a distributed probability) are NOT comparable, so they
+cannot be averaged... but the \emph{rankings} can.
+
+\begin{concepto}{Borda count (1770, elections; today, rank aggregation)}
+Each method orders the sentences and the position is the ``vote'': 1st $=$ 0 points, 2nd $=$ 1,
+and so on. The sentence with the LOWEST sum of positions wins. To hijack the opener you would
+have to fool BOTH judges at once: the dense subgroup loses because the centroid ranks its
+sentences low. With your data: geology went from exogenous deposits to the chemical composition
+of pegmatites; lepidolite kept its panoramic opening.
+\end{concepto}
+
+\section{Fidelity: reject, do not trim}
+
+The first draft opened lepidolite with \emph{``In addition, ...''}, a connector pointing at text
+that does not exist. Two possible fixes: TRIM the connector (which modifies the verbatim quote:
+forbidden by the project's fidelity rule) or REJECT the sentence and let Borda promote the next
+one. We reject: the \texttt{\_self\_contained()} filter now also vetoes two-word discourse
+connectors (``In addition'', ``On the other hand'', ``In contrast''...). The next one chosen was
+\emph{``Efficient flotation of lepidolite is crucial...''}, a better opening with zero
+manipulation of the original.
+
+\begin{ojo}
+The \dag{} in the draft marks sentences where the centroid and TextRank agree in the top 3
+(consensus $=$ a seal of confidence). If a section has no \dag, nothing is wrong, it only means
+the two judges saw different virtues.
+\end{ojo}
+
+\begin{practica}
+\texttt{.venv\textbackslash Scripts\textbackslash python.exe -m froth.review} generates
+\texttt{3\_Resultados/review\_draft\_v2.md} (42 traceable refs on Beauvoir) and its
+\texttt{.bib}. Open the .md and verify a citation: find the $[n]$, go to References, and check
+that the sentence exists in that paper's abstract. Auditable traceability.
+\end{practica}
+
+\begin{resumen}
+Draft v2 $=$ Borda picks the opener (fooling two judges is harder than one), MMR supplies the
+diverse backup, every sentence goes in verbatim with an $[n]$ citation $+$ BibTeX. Sentences
+with dangling connectors are REJECTED (never trimmed): fidelity rules.
+\end{resumen}
+
+\end{document}

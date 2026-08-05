@@ -1,0 +1,79 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{18}{Git and GitHub: save points and cloud backup}
+
+\section{What Git is}
+
+\begin{concepto}{Git $=$ a save-point machine}
+Like in a video game: every time you reach a state worth keeping, you make a \textbf{commit}
+(``save the game''): Git photographs ALL the project's files at that instant and keeps the
+photo forever, with a date, an author and a message. If you break something tomorrow, you can
+go back to any earlier photo. The history lives in the hidden \codigo{.git} folder. Every
+programmer on the planet uses it, daily.
+\end{concepto}
+
+Minimum vocabulary:
+\begin{itemize}
+  \item \textbf{repo(sitory)}: the project watched over by Git.
+  \item \codigo{git add .}: put files ``in the tray'' for the next photo.
+  \item \codigo{git commit -m "message"}: take the photo.
+  \item \codigo{git status}: see what is in the tray and what changed.
+  \item \textbf{branch}: a line of history. The main one is called \codigo{main}.
+  \item \textbf{remote / origin}: the nickname of the copy in the cloud.
+  \item \codigo{git push}: push your local photos to the cloud.
+\end{itemize}
+
+\begin{concepto}{.gitignore $=$ what NEVER enters the photos}
+A text file with the list of the forbidden: secrets (\codigo{.openalex\_key}), the bubble
+(\codigo{.venv/}), regenerable data (\codigo{2\_Datos/}), downloaded tools (\codigo{tools/}).
+That way the repo carries the \emph{code and the knowledge}, not the dead weight nor the keys.
+We checked with \codigo{git ls-files} that no secret got in: zero.
+\end{concepto}
+
+\section{What GitHub is (and what it is NOT)}
+
+\textbf{GitHub} is the cloud where you back up Git repos, and also your \textbf{public
+portfolio}: anyone can see your code, clone it (\codigo{git clone}) and run it on their PC.
+GitHub \emph{stores} the code; it does not \emph{run} it for the visitor.
+
+Your repo: \codigo{github.com/kmortizva-data/froth}, \textbf{private} for now (GitHub shows
+strangers a 404 so as not to reveal even that it exists). When it is polished:
+Settings $\rightarrow$ Change visibility $\rightarrow$ Public, and the portfolio is born.
+
+\section{What happened your first time (stumbles included, they teach)}
+
+\begin{enumerate}
+  \item \codigo{git init} $+$ \codigo{git add .} $+$ \codigo{git commit} $\rightarrow$ first
+        photo: 65 files, zero secrets.
+  \item \textbf{Stumble 1}: the push failed with ``repository does not seem to exist''. The
+        remote pointed at an example URL whose page had never been created on GitHub. Lesson:
+        \emph{the cloud repo has to be created before you push} (or let GitHub Desktop create
+        it with its \textbf{Publish repository} button, which does both things).
+  \item \textbf{Stumble 2}: \codigo{git remote remove origin} answered ``No such remote'',
+        which meant ``it was already removed'', not a real error. Lesson: read the message;
+        sometimes the ``error'' is just a notice that there was nothing to do.
+  \item \codigo{git branch -M main}: rename \codigo{master} $\rightarrow$ \codigo{main} (the
+        modern standard). Silence from the terminal $=$ success.
+  \item \textbf{Publish repository} in GitHub Desktop $\rightarrow$ it created the cloud repo
+        and pushed. Verified: \codigo{main...origin/main} with no differences $=$ in sync.
+\end{enumerate}
+
+\section{Your routine from now on (the only one you need to memorise)}
+
+At the end of every work session with changes worth keeping:
+\begin{center}
+\codigo{git add .} \quad$\rightarrow$\quad \codigo{git status} (review) \quad$\rightarrow$\quad
+\codigo{git commit -m "what I did"} \quad$\rightarrow$\quad \codigo{git push}
+\end{center}
+(Or in GitHub Desktop: review changes $\rightarrow$ write a summary $\rightarrow$ Commit
+$\rightarrow$ Push. It is the same thing with buttons.)
+
+\begin{resumen}
+Git keeps complete photos of the project (commits) and GitHub backs them up in the cloud and
+displays them as a portfolio; the .gitignore protects secrets and dead weight. Your routine:
+add $\rightarrow$ status $\rightarrow$ commit $\rightarrow$ push. First photo: 65 files, zero
+secrets, already in the cloud.
+\end{resumen}
+
+\end{document}

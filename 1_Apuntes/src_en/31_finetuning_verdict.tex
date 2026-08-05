@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+\begin{document}
+\cabecera{31}{The fine-tuning verdict: specialisation, not magic}
+
+\section{The experiment (6.6)}
+
+Two models competed over the cohort's 22 corpora with the SAME exam (same data, same UMAP seed,
+granularity chosen by DBCV): generic SPECTER against \textbf{specter-mineral}, your model
+fine-tuned in 83 seconds of GPU with $\sim$1250 title$\leftrightarrow$abstract pairs.
+
+\section{The numbers (the story is in the variance)}
+
+\begin{itemize}
+  \item \textbf{specter-mineral won 14 of 22 topics} on DBCV validity.
+  \item But the \emph{mean} delta was $+0.007$ with $\sigma = 0.170$, a flat average hiding a
+        strong pattern:
+  \item \textbf{It won big in the core of the domain}: hydrometallurgical recycling ($+0.30$),
+        XCT slags ($+0.24$), Beauvoir core imaging ($+0.20$), your thesis ($+0.05$).
+  \item \textbf{It lost at the periphery}: geopolymer mortars ($-0.43$), refinery simulation
+        ($-0.27$), AI on conveyor belts ($-0.21$).
+\end{itemize}
+
+\begin{concepto}{the lesson: a small fine-tune specialises towards the centre of mass}
+With little data, fine-tuning does not ``improve the model in general'': it \textbf{drags it
+towards where the mass of the training corpus is} (flotation/geology). Topics near that mass
+gain resolution; distant ones lose it. Open hypothesis (your natural next experiment): does the
+2$\times$ corpus with Scopus reduce the peripheral penalty?
+\end{concepto}
+
+\section{The double blind (your moment)}
+
+Two cluster listings from the Beauvoir corpus, labelled A/B at random, key hidden. You chose
+\textbf{B} ``because it separated fines flotation from lepidolite collector chemistry'', and B
+was \textbf{your model}. Metric and expert agreed on the domain you master: the strongest
+validation available.
+
+\begin{ojo}
+A ``no improvement on average'' with clear structure (wins here, loses there, and we know why)
+is a BETTER scientific result than an unexplained ``$+2\%$ everywhere''. Do not inflate:
+qualify.
+\end{ojo}
+
+\begin{resumen}
+14 wins out of 22, mean delta $\approx 0$, large $\sigma$: a small fine-tune specialises
+towards the core of the corpus at the cost of the periphery, confirmed by the metric (DBCV) and
+by a double-blind test where you picked your own model without knowing it.
+\end{resumen}
+
+\end{document}
