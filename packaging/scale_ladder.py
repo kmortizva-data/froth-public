@@ -16,11 +16,16 @@ import io
 import re
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, r"C:\Users\Bruce Wayne\Documents\Master Thesis AI")
+# Resolve the project root from this file, never from a typed-out path: the project folder
+# has been moved and renamed several times, and a hardcoded path silently stops importing
+# froth the day it moves. Same pattern froth/config.py already uses.
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 from froth import atlas, cluster, config, embed, graph, review, visualize
@@ -133,7 +138,7 @@ for budget in STEPS:
                      pack_kb=pack_bytes / 1024, atlas_s=t_atl, atlas_kb=atl_bytes / 1024))
 
 d = pd.DataFrame(rows)
-out = r"C:\Users\Bruce Wayne\Documents\Master Thesis AI\2_Datos\scale_ladder.csv"
+out = ROOT / "2_Datos" / "scale_ladder.csv"
 d.to_csv(out, index=False)
 
 print(f"\n{'=' * 78}\nVEREDICTO (umbral 'no shippeable' = {SLOW_S}s de generacion)\n")

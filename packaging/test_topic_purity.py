@@ -7,8 +7,13 @@ one returns A and caches it under B's key.
 """
 import io
 import sys
+from pathlib import Path
 
-sys.path.insert(0, r"C:\Users\Bruce Wayne\Documents\Master Thesis AI")
+# Resolve the project root from this file, never from a typed-out path: the project folder
+# has been moved and renamed several times (Documents -> 04_Proyectos -> 02_Personal ->
+# 02_Personal/Froth/"1_Froth (EN DESARROLLO)"), and a hardcoded path silently stops
+# importing froth the day it moves. Same pattern froth/config.py already uses.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 import pandas as pd

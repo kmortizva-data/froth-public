@@ -44,7 +44,10 @@ config.EMBEDDING_MODEL = "allenai-specter"         # pin BEFORE the model loads
 from froth import cluster as cl                                        # noqa: E402
 from froth import embed                                                # noqa: E402
 
-V1_ROOT = Path(r"C:\Users\Bruce Wayne\Documents\froth-v1core")
+# The v1 edition is the sibling folder, resolved from this file rather than typed out: a
+# hardcoded absolute path breaks the day the tree moves (it already did, twice) and it leaks
+# the author's Windows username into the public snapshot.
+V1_ROOT = Path(__file__).resolve().parents[2] / "3_Froth v1 (ARCHIVO)"
 TARGET_N = 250
 DROPPED = {"cluster-dropped", "noise-dropped"}
 # Readability is the CONSTRAINT, cluster quality is the objective: a candidate is only

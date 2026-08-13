@@ -56,11 +56,12 @@ columna vertebral, el topic y las decisiones ya están ahí.
 
 ## 4. Tu primera sesión de Claude Code con Froth
 
-1. Abre PowerShell y **entra a la carpeta del proyecto**:
+1. Abre PowerShell y **entra a la carpeta del proyecto** (la que contiene `app.py`):
    ```powershell
-   cd "C:\Users\Bruce Wayne\Documents\Master Thesis AI"
+   cd "<la carpeta donde tienes Froth>"
    ```
-   (`cd` = "change directory", cambiar de carpeta.)
+   (`cd` = "change directory", cambiar de carpeta.) Truco: en el Explorador, botón derecho
+   sobre la carpeta → "Copiar como ruta de acceso", y la pegas entre las comillas.
 2. Arranca Claude Code:
    ```powershell
    claude
