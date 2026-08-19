@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 # --- Folders (derived automatically from where this file lives) ---
-ROOT = Path(__file__).resolve().parent.parent      # the "Master Thesis AI" folder
+ROOT = Path(__file__).resolve().parent.parent      # the "Froth" folder
 DATA_RAW = ROOT / "2_Datos" / "raw"
 DATA_PROCESSED = ROOT / "2_Datos" / "processed"
 DATA_EMBEDDINGS = ROOT / "2_Datos" / "embeddings"
@@ -19,7 +19,7 @@ DELIVERABLES = ROOT / "3_Resultados"
 
 # --- Current topic (change ONLY this to try another subject) ---
 # TOPIC = the FULL, LITERAL thesis title, copied CHARACTER BY CHARACTER from the allocation
-# spreadsheet (EMerald_masterthesis_allocation_cohort11.csv, author: Fareed Ahmad Azizi).
+# spreadsheet (EMerald_masterthesis_allocation_cohort11.csv, authored by a classmate).
 # RULE: full fidelity, do NOT "fix" or simplify. The system will be reused with other titles
 # we do not know yet; each must go in exactly as written in its source.
 TOPIC = ("Flotation of differently sized Li bearing mica minerals and its impact on the "

@@ -628,3 +628,89 @@ if __name__ == "__main__":
     start = next(i for i, l in enumerate(lines) if l.startswith("## "))
     for l in lines[start:start + 8]:
         print("  " + l[:115])
+
+
+# Median references cited by an EMerald master's thesis, counted over the 22 in the local
+# corpus: 115, mean 155, quartiles 73 and 234. Batman guessed 60 and chose this number with
+# the measurement in front of him. It is what a thesis in his programme actually cites, not
+# a round number.
+READING_BUDGET = 115
+
+
+def spectrum_reading_list(topic_map, budget: int = READING_BUDGET):
+    """A single ranked reading list that CROSSES the islands instead of emptying them.
+
+    Batman's own description of the problem: "no leer los 40 de isla A que pasaron el
+    threshold y después 10 de isla B y después 5 de isla C... que estén organizados y
+    rankeados y se me haga más fácil ir leyendo el espectro".
+
+    The existing guide is one column per subtopic, most-cited first, which is exactly the
+    read-A-then-B order he does not want. This returns the same papers in a different
+    ORDER, built in two steps:
+
+    1. HOW MANY from each island. Proportional to relevance x sqrt(size): a more relevant
+       island earns more of the budget, and the square root stops a 571-paper island from
+       eating it. Every island gets at least one, because a list that skips an island is
+       not a spectrum. Never more than that island's own must-read count (the per-subtopic
+       h-index cut), since recommending past it would be padding.
+    2. IN WHAT ORDER. By rounds: the best paper of every island first, then each island's
+       second, and so on. The first N entries cover N islands, so stopping early still
+       leaves him with a view of the whole map rather than the top of one corner.
+    """
+    import numpy as np
+
+    from .visualize import _must_count
+
+    from .graph import isolated_islands
+
+    tm = topic_map[topic_map["cluster"] != -1]
+    if tm.empty:
+        return tm.head(0)
+
+    # Islands that cite nothing else on the map are EXCLUDED here, not merely demoted as
+    # they are on the Network. The distinction is deliberate: a map shows what the corpus
+    # contains and a stray island is information, but a reading list is a claim that these
+    # papers are worth hours of his time. Left in, the junk hub took four of the 115 slots.
+    try:
+        skip = isolated_islands(topic_map)
+    except Exception:
+        skip = set()
+
+    islands, weights = [], []
+    for c in sorted(tm["cluster"].unique()):
+        if int(c) in skip:
+            continue
+        part = tm[tm["cluster"] == c].sort_values("citations", ascending=False)
+        rel = float(part["relevance"].mean()) if "relevance" in part.columns else 1.0
+        islands.append((int(c), part))
+        weights.append(rel * np.sqrt(len(part)))
+
+    # Rounds visit the islands in order of weight, not in order of cluster id. Without this
+    # the first entries came out in whatever order HDBSCAN numbered the clusters, so the
+    # third thing he was told to read was a paper on BaTiO3 piezoelectrics. Reading breadth
+    # first is the point; reading it in an arbitrary order is not.
+    ranked = sorted(zip(islands, weights), key=lambda x: -x[1])
+    islands = [i for i, _ in ranked]
+    weights = [w for _, w in ranked]
+
+    total = sum(weights) or 1.0
+    quota = {}
+    for (c, part), w in zip(islands, weights):
+        share = int(round(budget * w / total))
+        ceiling = max(1, _must_count(part["citations"].tolist()))
+        quota[c] = max(1, min(share, ceiling, len(part)))
+
+    picked = {c: part.head(quota[c]) for c, part in islands}
+    rows, round_i = [], 0
+    while sum(len(v) for v in picked.values()) > len(rows):
+        for c, part in islands:
+            if round_i < len(picked[c]):
+                r = picked[c].iloc[round_i].copy()
+                r["island"] = str(part["label"].iloc[0])
+                r["island_rank"] = round_i + 1
+                rows.append(r)
+        round_i += 1
+
+    out = __import__("pandas").DataFrame(rows).reset_index(drop=True)
+    out.insert(0, "read_order", range(1, len(out) + 1))
+    return out

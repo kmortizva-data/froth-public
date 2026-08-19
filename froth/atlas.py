@@ -85,9 +85,20 @@ def atlas_html(topic_map: pd.DataFrame, height: int = 720,
         part = tm[tm["cluster"] == c]
         terr.append({"id": int(c), "name": short(str(part["label"].iloc[0]), 40),
                      "count": int(len(part)), "color": colors[c],
+                     # Distance to the thesis title, carried so the legend can SHOW it.
+                     # Information, not a filter: measured on this corpus, keeping only the
+                     # closest subtopics does not sharpen the view (44% of his own field
+                     # against 46% for no filter), because his title is half method and half
+                     # deposit and both are his. The legend marks; the choosing stays his.
+                     "rel": round(float(part["relevance"].mean()), 3)
+                     if "relevance" in part.columns else None,
                      "cx": round(float(part["x"].mean()), 3),
                      "cy": round(float(part["y"].mean()), 3)})
     terr.sort(key=lambda t: -t["count"])
+    _rels = sorted(t["rel"] for t in terr if t["rel"] is not None)
+    _weak = _rels[len(_rels) // 2] if _rels else None      # the lower half of THIS corpus
+    for t in terr:
+        t["weak"] = bool(_weak is not None and t["rel"] is not None and t["rel"] <= _weak)
 
     # Semantic-zoom thresholds, taken from THIS corpus's own size distribution rather than
     # invented (rule 9). Shneiderman's "overview first, zoom and filter, details on demand":
@@ -279,9 +290,18 @@ D.terr.forEach(t => {
   const row = document.createElement('label');
   row.className = 'lrow';
   row.dataset.terr = t.id;
+  // The relevance number rides along and the lower half is dimmed. Nothing is pre-ticked:
+  // measured, picking only the closest subtopics does not sharpen this corpus, so the
+  // legend says what it knows and leaves the decision alone.
+  if (t.weak) row.style.opacity = 0.55;
+  row.title = t.rel === null ? t.name
+            : t.name + '  -  closeness to your title: ' + t.rel.toFixed(2);
   row.innerHTML = '<input type="checkbox">' +
     '<span class="chip" style="background:' + t.color + '"></span>' +
     '<span class="lname">' + t.name + '</span>' +
+    (t.rel === null ? '' :
+      '<span class="lrel" style="opacity:.6;font-size:10px;margin-right:4px">'
+      + t.rel.toFixed(2) + '</span>') +
     '<span class="lcount">' + t.count + '</span>';
   row.querySelector('input').addEventListener('change', (e) => {
     if (e.target.checked) selected.add(t.id); else selected.delete(t.id);

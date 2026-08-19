@@ -51,3 +51,9 @@ Thumbs.db
 2_Datos/_backup_*/
 2_Datos/my_space.json
 docs/PRUEBA_REAL_local.md
+
+# --- EMerald style corpus (phase 9) ---
+# Third-party theses with no reuse licence declared. They live on disk only:
+# never committed, never bundled, never published, on ANY branch. The rule was
+# on style-private alone, which left main one "git add -A" away from taking them.
+2_Datos/style_corpus/

@@ -151,3 +151,65 @@ if __name__ == "__main__":
     for a, b, d in T.edges(data=True):
         la, lb = T.nodes[a]["label"][:20], T.nodes[b]["label"][:20]
         print(f"    {la} <-> {lb}: similarity {d['similarity']:.3f}, {d['citations']} citations across")
+
+
+def island_connectivity(topic_map: pd.DataFrame) -> dict[int, float]:
+    """Citation links per paper from each subtopic to ANY OTHER subtopic of the map.
+
+    The question it answers: does this island belong to this literature at all? A subtopic
+    that entered through a term collision cites nothing else here and nothing here cites it,
+    however plausible its keywords look.
+
+    Measured on the thesis corpus, this is the sharpest signal we have for the problem. The
+    junk hub the relevance gate admits ("women, gender, feminist", let in because the title's
+    element list contains Be, which is also an ordinary English word) has ONE cross-island
+    link across 105 papers, 0.01 per paper. The lepidolite flotation island has 1.58 per
+    paper, and even the borrowed coal-fines literature has 0.29.
+
+    Checked against the obvious confound before trusting it: those papers are not missing
+    their reference data. They carry 35.8 references each against a corpus mean of 40.3.
+    The references simply point somewhere else entirely.
+    """
+    by_cluster = dict(zip(topic_map["id"], topic_map["cluster"]))
+    links: dict[int, int] = {}
+    sizes: dict[int, int] = {}
+    for cluster_id, refs in zip(topic_map["cluster"], topic_map["references"]):
+        cluster_id = int(cluster_id)
+        if cluster_id == -1:
+            continue
+        sizes[cluster_id] = sizes.get(cluster_id, 0) + 1
+        if refs is None:
+            continue
+        for ref in list(refs):
+            other = by_cluster.get(ref)
+            if other is not None and int(other) not in (-1, cluster_id):
+                links[cluster_id] = links.get(cluster_id, 0) + 1
+    return {c: links.get(c, 0) / n for c, n in sizes.items() if n}
+
+
+def isolated_islands(topic_map: pd.DataFrame, min_gap: float = 1.6) -> set[int]:
+    """Subtopics disconnected from the rest of the map, cut at the data's own gap.
+
+    No fixed threshold (project rule 9): the connectivity values are sorted and the cut is
+    placed at the largest RELATIVE jump in the lower half, which is where the disconnected
+    tail stops and the ordinary literature begins. On the thesis corpus the values run
+    0.01, 0.07, 0.11, 0.21, 0.24, 0.29 ... and the cut lands after 0.11, catching exactly
+    the three islands that have nothing to do with the topic.
+
+    Returned to be DEMOTED, never deleted. An island can be poorly connected and still be
+    the interesting frontier; it loses its place only when something better competes for it.
+    """
+    conn = island_connectivity(topic_map)
+    if len(conn) < 4:
+        return set()
+    ordered = sorted(conn.values())
+    half = max(2, len(ordered) // 2)
+    best_i, best_ratio = 0, 0.0
+    for i in range(1, half):
+        ratio = (ordered[i] + 1e-6) / (ordered[i - 1] + 1e-6)
+        if ratio > best_ratio:
+            best_i, best_ratio = i, ratio
+    if best_ratio < min_gap:                 # no real gap: nothing is clearly disconnected
+        return set()
+    cut = ordered[best_i - 1]
+    return {c for c, v in conn.items() if v <= cut}

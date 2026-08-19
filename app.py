@@ -474,12 +474,54 @@ def _cap_for_heavy_views(tm: pd.DataFrame, v: np.ndarray):
     reported zero no matter how it was tuned. Capping each cluster's share fixes the cause.
     Measured trade-off on that corpus (same 400-paper budget): no cap = 2 islands / 0 bridges;
     60 = 8 / 17; 30 = 14 / 25; 20 = 21 / 23. Batman chose 30: the most bridges without the
-    islands shrinking back into the confetti v2 was written to avoid."""
+    islands shrinking back into the confetti v2 was written to avoid.
+
+    v4 (2026-08-29). Asked three times whether the bridge papers were real bridges, Batman
+    answered: "son de temas que no conozco y no puedo juzgar". He was right, and the map was
+    at fault. Islands were ranked by TOTAL CITATIONS, and geology cites far more heavily than
+    mineral processing, so petrology and geochronology took the places while his own subject
+    missed the cut. The bridges ran from Archean cratons to zircons: real bridges, in a
+    literature that is not his.
+
+    Ranking by the island's mean RELEVANCE to the thesis title instead. That number already
+    exists per paper, from the contrastive gate of phase 5; nothing new is computed.
+
+    Measured on the 5752-paper corpus, sharing the same 400-paper budget across 14 islands:
+        rule                  processing papers   mean relevance   first islands
+        by citations (v3)             34%             0.694        lavas, e-waste
+        by mean relevance             44%             0.716        nano-bubbles, coal fines
+        relevance x size              42%             0.708        pegmatites, coal fines
+        relevance x citations         33%             0.703        pegmatites, lavas
+    The corpus itself is 46% processing, so ranking by relevance very nearly removes the
+    geology bias rather than merely reducing it. Note the trap: the correlation between an
+    island's relevance and its being processing is +0.04, which looks like proof that
+    relevance cannot separate them. It is the wrong statistic. The middle of the ranking is
+    full of rare-metal granite geology that IS relevant to a thesis on Beauvoir; what
+    relevance does is push the off-topic geology (lavas 0.658, zircons 0.719) below his own
+    subject (nano-bubbles 0.811, coal fines 0.773), which is what the ordering needs."""
     cap = config.HEAVY_VIEW_MAX_PAPERS
     if len(tm) <= cap:
         return tm, v, False
     per_cluster = config.NETWORK_MAX_PER_CLUSTER
-    weight = tm.groupby("cluster")["citations"].sum().sort_values(ascending=False)
+    weight = tm.groupby("cluster")["relevance"].mean().sort_values(ascending=False) \
+        if "relevance" in tm.columns \
+        else tm.groupby("cluster")["citations"].sum().sort_values(ascending=False)
+
+    # Ranking by relevance promotes his own subject, and it promotes the junk hub with it:
+    # "women, gender, feminist" scores 0.698 because the title's element list contains Be,
+    # which is also an ordinary English word. Relevance cannot tell them apart, but citation
+    # links can: that island makes ONE cross-island citation in 105 papers where the
+    # lepidolite flotation island makes 1.58 per paper. Demoted to the end of the queue, not
+    # dropped - a poorly connected island can still be the interesting frontier, so it loses
+    # its place only when something better wants it.
+    try:
+        isolated = graph.isolated_islands(tm)
+        if isolated:
+            order = [c for c in weight.index if c not in isolated] + \
+                    [c for c in weight.index if c in isolated]
+            weight = weight.reindex(order)
+    except Exception:
+        pass                                   # no reference data: rank on relevance alone
     keep_parts, budget = [], cap
     for c in weight.index:
         if c == -1 or budget <= 0:
@@ -538,10 +580,28 @@ def _hub_menu(tm: pd.DataFrame, widget_key: str) -> None:
         0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
         50%      { box-shadow: 0 0 12px 2px rgba(99,102,241,.45); } }
     </style>""", unsafe_allow_html=True)
+    # Each subtopic carries its distance to the thesis title, and the weak half is marked.
+    # Shown as INFORMATION, never as a filter: measured on this corpus, selecting the
+    # most relevant islands does not concentrate his own field (44% processing against 46%
+    # for no filter at all), because his title is half method and half deposit and both
+    # halves are legitimately his. So the number is here to be read, and the picking stays
+    # his. A control that felt like focus without delivering it would be worse than none.
     parts = tm[tm["cluster"] != -1].groupby("cluster")
-    sized = sorted(((int(c), str(g["label"].iloc[0]), len(g)) for c, g in parts),
-                   key=lambda t: -t[2])
-    options = {f"{lab[:38]} ({n})": c for c, lab, n in sized}
+    rows = [(int(c), str(g["label"].iloc[0]), len(g),
+             float(g["relevance"].mean()) if "relevance" in g.columns else 0.0)
+            for c, g in parts]
+    rows.sort(key=lambda t: -t[3])
+    rels = sorted(r[3] for r in rows)
+    weak = rels[len(rels) // 2] if rels else 0.0        # the lower half, by this corpus
+    try:
+        far = graph.isolated_islands(tm)
+    except Exception:
+        far = set()
+    def _tag(c, rel):
+        if c in far:
+            return "○ "                                  # cites nothing else on this map
+        return "  " if rel <= weak else "● "
+    options = {f"{_tag(c, rel)}{lab[:34]} · {n} · {rel:.2f}": c for c, lab, n, rel in rows}
     by_id = {c: k for k, c in options.items()}
     current = tuple(st.session_state.get("atlas_hubs", ()))
     wkey = f"hubsel_{widget_key}"
@@ -559,11 +619,16 @@ def _hub_menu(tm: pd.DataFrame, widget_key: str) -> None:
 
     with st.container(key=f"hubmenu_{widget_key}"):
         with st.expander(":material/tune: Choose the subtopics to draw", expanded=False):
+            st.caption("Sorted by closeness to your thesis title, with that number last. "
+                       "**●** = the closer half · **○** = cites nothing else on this map. "
+                       "Marks, not filters: on this corpus picking only the closest "
+                       "subtopics does not sharpen the view, because your title is half "
+                       "method and half deposit and both halves are yours.")
             st.multiselect(
                 "Subtopics (empty = the biggest ones)", list(options),
                 default=wanted if wkey not in st.session_state else None,
                 key=wkey, label_visibility="collapsed", on_change=_apply_pick,
-                placeholder="Empty = the biggest subtopics")
+                placeholder="Empty = the most relevant subtopics")
 
 
 @st.cache_data
@@ -1573,6 +1638,49 @@ if tab_net.open:      # lazy: skip the body entirely when not looking at it
 
 if tab_packed.open:      # lazy: skip the body entirely when not looking at it
     with tab_packed:
+        # Two ways to read the same papers. The map answers "what is out there"; the list
+        # answers "what do I read on Monday". Batman's words for why the list had to exist:
+        # "no leer los 40 de isla A que pasaron el threshold y despues 10 de isla B... que
+        # esten organizados y rankeados y se me haga mas facil ir leyendo el espectro".
+        spectrum = st.toggle(
+            "Read by spectrum (a single ranked list across all subtopics)",
+            key="packed_spectrum",
+            help="Instead of one column per subtopic, one numbered list that takes the best "
+                 "of each subtopic in turn. Stop wherever you like and you have still seen "
+                 "the whole map.")
+        if spectrum:
+            budget = st.slider(
+                "How many papers", 30, 300, review_mod.READING_BUDGET, step=5,
+                key="packed_budget",
+                help="115 is the MEDIAN number of references an EMerald master's thesis "
+                     "actually cites, counted over 22 of them. Not a round number.")
+            order = review_mod.spectrum_reading_list(tm, budget=budget)
+            st.caption(f"**{len(order)} papers across {order['island'].nunique()} subtopics.** "
+                       "Read top to bottom: each row comes from a different subtopic than "
+                       "the last, so the first dozen already cross the whole map. Subtopics "
+                       "that cite nothing else here are left out of this list.")
+            show = order[["read_order", "island", "title", "year", "citations", "oa_url"]]
+            st.dataframe(
+                show, hide_index=True, use_container_width=True, height=560,
+                column_config={
+                    "read_order": st.column_config.NumberColumn("#", width="small"),
+                    "island": st.column_config.TextColumn("Subtopic", width="medium"),
+                    "title": st.column_config.TextColumn("Title", width="large"),
+                    "year": st.column_config.NumberColumn("Year", format="%d", width="small"),
+                    "citations": st.column_config.NumberColumn("Cit.", width="small"),
+                    "oa_url": st.column_config.LinkColumn("Free PDF", display_text="open"),
+                })
+            st.download_button(
+                "Download this reading list (CSV)", show.to_csv(index=False),
+                file_name="froth_reading_list.csv", mime="text/csv",
+                icon=":material/download:")
+            # st.stop() rather than wrapping the map below in an else, which would mean
+            # re-indenting eighty lines for no gain. It is safe here because every tab body
+            # sits behind its own `if tab_x.open` guard and only one tab is open at a time,
+            # so nothing downstream was going to run anyway. If a footer is ever added
+            # after the tabs, this becomes a bug: put it above the tabs, or invert this.
+            st.stop()
+
         st.caption("Reading guide: one column per subtopic, most-cited papers first "
                    "(read left→right, top→down). Above the dashed line = the must-reads - "
                    "an h-index cut computed for EACH subtopic of THIS corpus, not a fixed "
