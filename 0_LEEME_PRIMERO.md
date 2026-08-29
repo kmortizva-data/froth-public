@@ -1,5 +1,21 @@
 # 🗺️ Guía de carpetas - empieza por aquí
 
+> ### 👀 ¿Por qué esta carpeta se ve casi vacía?
+>
+> Porque se ordenó a propósito (29 de agosto de 2026). Al abrirla ves **dos cosas**:
+> **`Abrir Froth`**, que es el clic que arranca el programa, y **`Mis cosas`**, con atajos
+> a tus apuntes, datos, resultados y notebooks.
+>
+> **No se borró ni se movió nada.** Los otros 34 elementos siguen exactamente donde
+> estaban: solo están marcados como ocultos, que es una etiqueta de Windows que le dice al
+> Explorador que no los dibuje. Para verlos otra vez tienes dos caminos:
+>
+> - **Rápido y temporal**: en el Explorador, pestaña **Ver → Mostrar → Elementos ocultos**.
+> - **Definitivo**: `powershell -ExecutionPolicy Bypass -File packaging	idy_folder.ps1 -Revert`
+>
+> Y si algún día vuelve a verse desordenada, el mismo script sin `-Revert` la ordena otra
+> vez. Pasa cuando git reescribe archivos: al hacerlo les quita la etiqueta de oculto.
+
 ¿No sabes en qué carpeta entrar? Esta es la chuleta. Regla simple:
 
 > **Las carpetas con número (1 a 5) son TUYAS: entra tranquilo.**
