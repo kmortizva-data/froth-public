@@ -146,6 +146,9 @@ html, body { margin:0; background:#18181b; height:100%; overflow:hidden;
   border:none; border-radius:10px; background:#4f46e5; color:#e0e7ff; font-size:13px;
   font-weight:600; cursor:pointer; font-family:inherit; }
 #tonet:disabled { background:#27272a; color:#52525b; cursor:default; }
+.selbtn { border:1px solid #3f3f46; border-radius:7px; background:transparent;
+  color:#a1a1aa; font-size:10.5px; font-family:inherit; padding:3px 8px; cursor:pointer; }
+.selbtn:hover { border-color:#6366f1; color:#c7d2fe; }
 </style></head><body>
 <div id="map"></div><div id="hud"></div>
 <button id="home">&#8592; Whole map</button>
@@ -157,6 +160,11 @@ html, body { margin:0; background:#18181b; height:100%; overflow:hidden;
    <input type="checkbox" id="tgnoise" checked style="accent-color:#6366f1;margin:0;">noise</label>
  <label style="display:flex;gap:4px;align-items:center;cursor:pointer;">
    <input type="checkbox" id="tgdim" style="accent-color:#6366f1;margin:0;">dim low relevance</label>
+</div>
+<div style="display:flex;gap:6px;margin:0 0 8px 2px;">
+ <button class="selbtn" id="selsug"></button>
+ <button class="selbtn" id="selall">All</button>
+ <button class="selbtn" id="selnone">None</button>
 </div>
 <div id="lrows"></div></div>
 <button id="tonet" disabled>Open selection in Network</button>
@@ -349,6 +357,39 @@ function refreshBtn() {
     : 'Open ' + selected.size + ' hub' + (selected.size > 1 ? 's' : '') +
       ' in Network (' + total.toLocaleString() + ' papers)';
 }
+// ---- Tick in bulk -------------------------------------------------------------------
+// Why buttons and not a pre-ticked default: the dimming says which subtopics sit in the
+// closer half of this corpus, and saying that while ticking nothing is the interface
+// pointing at a group and then doing nothing with it. But pre-ticking would be worse.
+// Measured on this corpus at the stored detail: the same rule leaves 'spodumene
+// flotation' (0.61), 'fluorite flotation' (0.59) and 'scheelite flotation' (0.58)
+// unticked while ticking 'dorchap dyke swarm' (0.85) and 'nephrite' (0.80) - 261 of his
+// 674 flotation papers outside the mark - because his title is half method and half
+// deposit and closeness rewards the deposit half. So the rule is offered as a button he
+// presses, never as a state he did not choose.
+//
+// Applies to every territory, not only the rows the viewport is showing: the legend
+// hides rows, it does not remove them, and a selection that changed with the zoom would
+// be impossible to reason about. The count in the label says how many that is.
+function applySel(pred) {
+  selected.clear();
+  D.terr.forEach(t => { if (pred(t)) selected.add(t.id); });
+  document.querySelectorAll('.lrow').forEach(row => {
+    row.querySelector('input').checked = selected.has(+row.dataset.terr);
+  });
+  refreshBtn();
+}
+const nSug = D.terr.filter(t => !t.weak).length;
+const sugBtn = document.getElementById('selsug');
+sugBtn.textContent = 'Suggested (' + nSug + ')';
+sugBtn.title = 'Ticks the subtopics in the closer half to your title - the ones NOT dimmed.'
+  + '\\nA shortcut, not a filter: measured on this corpus, keeping only the closest ones '
+  + 'does not sharpen it (44% of your own field against 46% for no filter), because your '
+  + 'title is half method and half deposit. Untick freely.';
+sugBtn.addEventListener('click', () => applySel(t => !t.weak));
+document.getElementById('selall').addEventListener('click', () => applySel(() => true));
+document.getElementById('selnone').addEventListener('click', () => applySel(() => false));
+
 // The host relays the app-wide pick on every render: mirror it here so the
 // checkboxes never go stale (e.g. after 'Clear pick' in the Network tab).
 window.addEventListener('message', (e) => {
